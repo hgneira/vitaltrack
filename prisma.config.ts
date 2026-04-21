@@ -12,9 +12,4 @@ export default defineConfig({
   migrations: {
     seed: "npx tsx prisma/seed.ts",
   },
-  migrate: {
-    adapter() {
-      return new PrismaPg({ connectionString });
-    },
-  },
 });

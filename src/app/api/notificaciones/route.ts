@@ -100,8 +100,8 @@ export async function GET() {
     if (["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol)) {
       const tareaWhere =
         rol === "INGENIERIA_BIOMEDICA"
-          ? { asignadoAId: userId, estado: { in: ["PENDIENTE", "EN_PROCESO"] as const } }
-          : { estado: { in: ["PENDIENTE", "EN_PROCESO"] as const } };
+          ? { asignadoAId: userId, estado: { in: ["PENDIENTE" as const, "EN_PROCESO" as const] } }
+          : { estado: { in: ["PENDIENTE" as const, "EN_PROCESO" as const] } };
 
       const tareas = await prisma.tareaMantenimiento.findMany({
         where: tareaWhere,
