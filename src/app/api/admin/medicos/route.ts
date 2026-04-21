@@ -36,7 +36,7 @@ export async function GET() {
 
     // Get unique patient count per doctor
     const medicosConPacientes = await Promise.all(
-      medicos.map(async (m) => {
+      medicos.map(async (m: (typeof medicos)[0]) => {
         const pacientesUnicos = await prisma.cita.findMany({
           where: { medicoId: m.id },
           select: { pacienteId: true },
