@@ -90,6 +90,20 @@ export default function DispositivoPage() {
     setSaving(false);
   };
 
+  const openAccion = (tipo: ActionType) => {
+    setAccionActiva(tipo);
+    setArea("");
+    setNotas("");
+    setSaveError("");
+  };
+
+  const closeSheet = () => {
+    setAccionActiva(null);
+    setArea("");
+    setNotas("");
+    setSaveError("");
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <Loader2 size={28} className="animate-spin text-slate-400" />
@@ -106,6 +120,12 @@ export default function DispositivoPage() {
 
   const estadoCfg = ESTADO_CFG[equipo.estado] ?? ESTADO_CFG.ACTIVO;
   const EstadoIcon = estadoCfg.icon;
+  const accionDef = accionActiva ? ACCIONES.find((a) => a.tipo === accionActiva) : null;
+
+  const confirmDisabled =
+    saving ||
+    (accionActiva === "MOVER" && !area.trim()) ||
+    (accionActiva === "REPORTAR_PROBLEMA" && !notas.trim());
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
@@ -161,10 +181,12 @@ export default function DispositivoPage() {
           <div className="grid grid-cols-2 gap-3">
             {ACCIONES.map((a) => {
               const Icon = a.icon;
-              const isActive = accionActiva === a.tipo;
               return (
-                <button key={a.tipo} onClick={() => { setAccionActiva(isActive ? null : a.tipo); setSaveError(""); setArea(""); setNotas(""); }}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl text-white transition-all ${a.color} ${isActive ? "ring-4 ring-offset-2 ring-white shadow-lg scale-95" : "shadow-sm"}`}>
+                <button
+                  key={a.tipo}
+                  onClick={() => openAccion(a.tipo)}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl text-white transition-all ${a.color} shadow-sm active:scale-95`}
+                >
                   <Icon size={22} />
                   <span className="text-sm font-semibold">{a.label}</span>
                   <span className="text-xs opacity-75 text-center leading-tight">{a.desc}</span>
@@ -173,46 +195,6 @@ export default function DispositivoPage() {
             })}
           </div>
         </div>
-
-        {/* Expanded action form */}
-        {accionActiva && (
-          <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-5 space-y-4">
-            <p className="font-semibold text-slate-800 text-sm">
-              {ACCIONES.find((a) => a.tipo === accionActiva)?.label}
-            </p>
-
-            {accionActiva === "MOVER" && (
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Nueva área / ubicación *</label>
-                <input value={area} onChange={(e) => setArea(e.target.value)} placeholder="Ej. Sala de Choque"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                {accionActiva === "REPORTAR_PROBLEMA" ? "Descripción del problema *" : "Notas (opcional)"}
-              </label>
-              <textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={3}
-                placeholder={accionActiva === "REPORTAR_PROBLEMA" ? "Describe el problema encontrado…" : "Notas adicionales…"}
-                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none" />
-            </div>
-
-            {saveError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{saveError}</p>}
-
-            <div className="flex gap-3">
-              <button onClick={handleAccion} disabled={saving || (accionActiva === "MOVER" && !area.trim()) || (accionActiva === "REPORTAR_PROBLEMA" && !notas.trim())}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 ${
-                  ACCIONES.find((a) => a.tipo === accionActiva)?.color ?? "bg-slate-600"
-                }`}>
-                {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Confirmar"}
-              </button>
-              <button onClick={() => setAccionActiva(null)} className="px-4 py-3 rounded-xl text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 font-medium">
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* History */}
         <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
@@ -271,6 +253,125 @@ export default function DispositivoPage() {
           )}
         </div>
       </div>
+
+      {/* Bottom sheet confirmation modal */}
+      {accionActiva && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
+            onClick={closeSheet}
+          />
+
+          {/* Sheet */}
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-8 max-w-lg mx-auto">
+            {/* Drag handle */}
+            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
+
+            {/* Title */}
+            <div className="flex items-center gap-3 mb-5">
+              {accionDef && (
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  accionDef.tipo === "TOMAR" ? "bg-blue-100" :
+                  accionDef.tipo === "MOVER" ? "bg-violet-100" :
+                  accionDef.tipo === "DEVOLVER" ? "bg-emerald-100" :
+                  "bg-red-100"
+                }`}>
+                  <accionDef.icon size={18} className={
+                    accionDef.tipo === "TOMAR" ? "text-blue-600" :
+                    accionDef.tipo === "MOVER" ? "text-violet-600" :
+                    accionDef.tipo === "DEVOLVER" ? "text-emerald-600" :
+                    "text-red-600"
+                  } />
+                </div>
+              )}
+              <div>
+                <p className="font-bold text-slate-900 text-base">{accionDef?.label}</p>
+                <p className="text-xs text-slate-400">{equipo.nombre}</p>
+              </div>
+            </div>
+
+            {/* Fields */}
+            {accionActiva === "MOVER" && (
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Nueva área / ubicación *</label>
+                <input
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                  placeholder="Ej. Sala de Choque"
+                  autoFocus
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                />
+              </div>
+            )}
+
+            {(accionActiva === "REPORTAR_PROBLEMA" || accionActiva === "MOVER") && (
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  {accionActiva === "REPORTAR_PROBLEMA" ? "Descripción del problema *" : "Notas (opcional)"}
+                </label>
+                <textarea
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  rows={3}
+                  autoFocus={accionActiva === "REPORTAR_PROBLEMA"}
+                  placeholder={accionActiva === "REPORTAR_PROBLEMA" ? "Describe el problema encontrado…" : "Notas adicionales…"}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+                />
+              </div>
+            )}
+
+            {accionActiva === "TOMAR" && (
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Notas (opcional)</label>
+                <textarea
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  rows={2}
+                  placeholder="Notas adicionales…"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+                />
+              </div>
+            )}
+
+            {accionActiva === "DEVOLVER" && (
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Notas (opcional)</label>
+                <textarea
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  rows={2}
+                  placeholder="Notas adicionales…"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+                />
+              </div>
+            )}
+
+            {saveError && (
+              <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-4">{saveError}</p>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleAccion}
+                disabled={confirmDisabled}
+                className={`flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 ${
+                  accionDef?.color ?? "bg-slate-600"
+                }`}
+              >
+                {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Confirmar"}
+              </button>
+              <button
+                onClick={closeSheet}
+                className="px-5 py-3.5 rounded-xl text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 font-medium"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

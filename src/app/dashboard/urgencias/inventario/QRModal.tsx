@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { X, Printer, Download, Smartphone } from "lucide-react";
+import { X, Printer, Smartphone } from "lucide-react";
 
 interface Props {
   equipo: { id: string; nombre: string; marca?: string; numeroSerie?: string; ubicacion?: string };
@@ -62,54 +62,73 @@ export default function QRModal({ equipo, onClose }: Props) {
           </button>
         </div>
 
-        {/* QR card (printed version inside printRef) */}
-        <div className="p-6 flex flex-col items-center gap-4">
-          <div ref={printRef}>
-            <div className="card">
-              <div className="logo">Vital<span>Track</span></div>
-              <div className="subtitle">Medical Device Tracking</div>
-              <div className="qr-wrap">
-                {origin && (
-                  <QRCodeSVG
-                    value={url}
-                    size={160}
-                    level="M"
-                    includeMargin={false}
-                  />
-                )}
-              </div>
-              <div className="name">{equipo.nombre}</div>
-              {equipo.marca && <div className="meta">{equipo.marca}</div>}
-              {equipo.ubicacion && <div className="meta">{equipo.ubicacion}</div>}
-              {equipo.numeroSerie && <div className="serial">{equipo.numeroSerie}</div>}
-              <div className="url">{url}</div>
-            </div>
-          </div>
-
-          {/* Screen preview of QR */}
-          <div className="text-center">
-            {origin && (
-              <div className="flex justify-center mb-3">
+        {/* Hidden print-only content */}
+        <div ref={printRef} className="hidden">
+          <div className="card">
+            <div className="logo">Vital<span>Track</span></div>
+            <div className="subtitle">Medical Device Tracking</div>
+            <div className="qr-wrap">
+              {origin && (
                 <QRCodeSVG
                   value={url}
-                  size={180}
+                  size={160}
                   level="M"
-                  includeMargin={true}
-                  style={{ border: "1px solid #e2e8f0", borderRadius: 8 }}
+                  includeMargin={false}
                 />
-              </div>
+              )}
+            </div>
+            <div className="name">{equipo.nombre}</div>
+            {equipo.marca && <div className="meta">{equipo.marca}</div>}
+            {equipo.ubicacion && <div className="meta">{equipo.ubicacion}</div>}
+            {equipo.numeroSerie && <div className="serial">{equipo.numeroSerie}</div>}
+            <div className="url">{url}</div>
+          </div>
+        </div>
+
+        {/* Clean screen preview */}
+        <div className="p-6 flex flex-col items-center gap-4">
+          {/* Device name */}
+          <p className="text-base font-bold text-slate-900 text-center">{equipo.nombre}</p>
+
+          {/* QR code */}
+          {origin && (
+            <div className="flex justify-center">
+              <QRCodeSVG
+                value={url}
+                size={200}
+                level="M"
+                includeMargin={true}
+                style={{ border: "1px solid #e2e8f0", borderRadius: 8 }}
+              />
+            </div>
+          )}
+
+          {/* Device info */}
+          <div className="text-center space-y-1">
+            {equipo.marca && (
+              <p className="text-sm text-slate-500">{equipo.marca}</p>
             )}
-            <p className="text-xs text-slate-500 flex items-center gap-1 justify-center">
-              <Smartphone size={12} />
-              Escanea para abrir la ficha en el celular
-            </p>
-            <p className="text-xs text-slate-300 mt-1 break-all font-mono">{url}</p>
+            {equipo.ubicacion && (
+              <p className="text-sm text-slate-500">{equipo.ubicacion}</p>
+            )}
+            {equipo.numeroSerie && (
+              <p className="text-xs font-mono text-slate-400 bg-slate-50 inline-block px-2 py-0.5 rounded">{equipo.numeroSerie}</p>
+            )}
           </div>
 
-          {/* Actions */}
+          <p className="text-xs text-slate-500 flex items-center gap-1 justify-center">
+            <Smartphone size={12} />
+            Escanea para abrir la ficha en el celular
+          </p>
+
+          <p className="text-xs text-slate-300 break-all font-mono text-center">{url}</p>
+
+          {/* Print button */}
           <div className="flex gap-3 w-full">
-            <button onClick={handlePrint}
-              className="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-slate-700 transition-colors">
+            <button
+              onClick={handlePrint}
+              className="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-slate-700 transition-colors"
+            >
               <Printer size={15} /> Imprimir
             </button>
           </div>
