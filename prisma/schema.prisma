@@ -1,0 +1,462 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== USUARIOS Y ROLES ====================
+
+model User {
+  id           String   @id @default(cuid())
+  nombre       String
+  apellidos    String?
+  titulo       String?
+  email        String   @unique
+  password     String
+  rol          Rol
+  especialidad      String?
+  subespecialidad   String?
+  telefono          String?
+  escuela           String?
+  cedulaProfesional String?
+  foto              String?
+  activo       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Medical
+  citas              Cita[]
+  pacientes          Paciente[]
+  expedientesCreados Expediente[]
+  notasCreadas       NotaSOAP[]
+
+  // HR / Employee
+  asistencias   Asistencia[]
+  horarios      HorarioTrabajo[]
+  pagos         Pago[]
+
+  // Cleaning / Maintenance
+  registrosLimpieza     RegistroLimpieza[]
+  alertasCreadas        Alerta[]            @relation("alertasCreadas")
+  alertasAsignadas      Alerta[]            @relation("alertasAsignadas")
+
+  // Pharmacy
+  movimientosMedicamento MovimientoMedicamento[]
+
+  // Biomedical tasks
+  tareasAsignadas  TareaMantenimiento[] @relation("tareasAsignadas")
+  tareasCreadas    TareaMantenimiento[] @relation("tareasCreadas")
+
+  // Device actions (QR)
+  accionesDispositivo AccionDispositivo[]
+
+  @@map("usuarios")
+}
+
+enum Rol {
+  ADMINISTRADOR
+  MEDICO
+  ENFERMERIA
+  INGENIERIA_BIOMEDICA
+  RECEPCION
+  LIMPIEZA
+  FARMACIA
+  MANTENIMIENTO
+  JEFE_BIOMEDICA
+  URGENCIAS
+}
+
+// ==================== PACIENTES ====================
+
+model Paciente {
+  id                 String   @id @default(cuid())
+  nombre             String
+  apellidos          String
+  fechaNacimiento    DateTime
+  sexo               String
+  telefono           String?
+  email              String?
+  direccion          String?
+  alergias           String?
+  antecedentes       String?
+  contactoEmergencia String?
+  telefonoEmergencia String?
+  medicoId           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  medico      User?        @relation(fields: [medicoId], references: [id])
+  citas       Cita[]
+  expedientes Expediente[]
+
+  @@map("pacientes")
+}
+
+// ==================== CITAS ====================
+
+model Cita {
+  id        String     @id @default(cuid())
+  fecha     DateTime
+  motivo    String?
+  estado    EstadoCita @default(PROGRAMADA)
+  notas     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  pacienteId String
+  medicoId   String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id])
+  medico     User     @relation(fields: [medicoId], references: [id])
+
+  @@map("citas")
+}
+
+enum EstadoCita {
+  PROGRAMADA
+  CANCELADA
+  COMPLETADA
+}
+
+// ==================== EXPEDIENTE CLÍNICO ====================
+
+model Expediente {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pacienteId String   @unique
+  medicoId   String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id])
+  medico     User     @relation(fields: [medicoId], references: [id])
+
+  notas NotaSOAP[]
+
+  @@map("expedientes")
+}
+
+model NotaSOAP {
+  id          String   @id @default(cuid())
+  subjetivo   String?
+  objetivo    String?
+  analisis    String?
+  plan        String?
+  diagnostico String?
+  tratamiento String?
+  evolucion   String?
+  createdAt   DateTime @default(now())
+
+  expedienteId String
+  creadoPorId  String
+  expediente   Expediente @relation(fields: [expedienteId], references: [id])
+  creadoPor    User       @relation(fields: [creadoPorId], references: [id])
+
+  @@map("notas_soap")
+}
+
+// ==================== INVENTARIO BIOMÉDICO ====================
+
+model EquipoMedico {
+  id               String       @id @default(cuid())
+  nombre           String
+  marca            String?
+  modelo           String?
+  numeroSerie      String?      @unique
+  fechaAdquisicion DateTime?
+  ubicacion        String?
+  estado           EstadoEquipo @default(ACTIVO)
+  descripcion      String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  mantenimientos Mantenimiento[]
+  tareas         TareaMantenimiento[]
+  acciones       AccionDispositivo[]
+
+  @@map("equipos_medicos")
+}
+
+enum EstadoEquipo {
+  ACTIVO
+  EN_MANTENIMIENTO
+  FUERA_DE_SERVICIO
+}
+
+model Mantenimiento {
+  id          String            @id @default(cuid())
+  tipo        TipoMantenimiento
+  fecha       DateTime
+  descripcion String?
+  tecnico     String?
+  costo       Float?
+  proximoMantenimiento DateTime?
+  createdAt   DateTime          @default(now())
+
+  equipoId String
+  equipo   EquipoMedico @relation(fields: [equipoId], references: [id])
+
+  @@map("mantenimientos")
+}
+
+enum TipoMantenimiento {
+  PREVENTIVO
+  CORRECTIVO
+  INSPECCION
+}
+
+// ==================== MÓDULO DE EMPLEADOS (HR) ====================
+
+model Asistencia {
+  id            String         @id @default(cuid())
+  userId        String
+  fecha         DateTime       @db.Date
+  tipo          TipoAsistencia @default(PRESENTE)
+  horaEntrada   DateTime?
+  horaSalida    DateTime?
+  notas         String?
+  createdAt     DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, fecha])
+  @@map("asistencias")
+}
+
+enum TipoAsistencia {
+  PRESENTE
+  AUSENTE
+  PERMISO
+  VACACIONES
+  INCAPACIDAD
+}
+
+model HorarioTrabajo {
+  id         String  @id @default(cuid())
+  userId     String
+  diaSemana  Int
+  horaInicio String
+  horaFin    String
+  activo     Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("horarios_trabajo")
+}
+
+model Pago {
+  id          String   @id @default(cuid())
+  userId      String
+  periodo     String
+  monto       Float
+  tipo        TipoPago @default(SALARIO)
+  descripcion String?
+  fechaPago   DateTime?
+  pagado      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("pagos")
+}
+
+enum TipoPago {
+  SALARIO
+  BONO
+  DESCUENTO
+}
+
+// ==================== LIMPIEZA Y MANTENIMIENTO ====================
+
+model AreaHospital {
+  id          String   @id @default(cuid())
+  nombre      String
+  descripcion String?
+  piso        String?
+  tipo        TipoArea @default(OTRO)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  registros RegistroLimpieza[]
+  alertas   Alerta[]
+
+  @@map("areas_hospital")
+}
+
+enum TipoArea {
+  CUARTO_PACIENTE
+  BANO
+  PASILLO
+  SALA_ESPERA
+  QUIROFANO
+  LABORATORIO
+  FARMACIA
+  ADMINISTRACION
+  CAFETERIA
+  OTRO
+}
+
+model RegistroLimpieza {
+  id          String       @id @default(cuid())
+  areaId      String
+  userId      String
+  tipo        TipoRegistro @default(LIMPIEZA)
+  descripcion String?
+  fecha       DateTime     @default(now())
+
+  area AreaHospital @relation(fields: [areaId], references: [id])
+  user User         @relation(fields: [userId], references: [id])
+
+  @@map("registros_limpieza")
+}
+
+enum TipoRegistro {
+  LIMPIEZA
+  MANTENIMIENTO_GENERAL
+  INSPECCION
+}
+
+model Alerta {
+  id          String       @id @default(cuid())
+  titulo      String
+  descripcion String?
+  areaId      String?
+  tipo        TipoAlerta   @default(LIMPIEZA)
+  prioridad   Prioridad    @default(MEDIA)
+  estado      EstadoAlerta @default(PENDIENTE)
+  creadaPorId String
+  asignadaAId String?
+  resueltaEn  DateTime?
+  createdAt   DateTime     @default(now())
+
+  area      AreaHospital? @relation(fields: [areaId], references: [id])
+  creadaPor User          @relation("alertasCreadas", fields: [creadaPorId], references: [id])
+  asignadaA User?         @relation("alertasAsignadas", fields: [asignadaAId], references: [id])
+
+  @@map("alertas")
+}
+
+enum TipoAlerta {
+  LIMPIEZA
+  MANTENIMIENTO
+  EMERGENCIA
+}
+
+enum Prioridad {
+  BAJA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+enum EstadoAlerta {
+  PENDIENTE
+  EN_PROCESO
+  RESUELTA
+}
+
+// ==================== FARMACIA ====================
+
+model Medicamento {
+  id              String   @id @default(cuid())
+  nombre          String
+  principioActivo String?
+  presentacion    String?
+  concentracion   String?
+  stock           Int      @default(0)
+  stockMinimo     Int      @default(5)
+  unidad          String?
+  precio          Float?
+  ubicacion       String?
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  movimientos MovimientoMedicamento[]
+
+  @@map("medicamentos")
+}
+
+model MovimientoMedicamento {
+  id             String         @id @default(cuid())
+  medicamentoId  String
+  tipo           TipoMovimiento
+  cantidad       Int
+  precio         Float?
+  motivo         String?
+  pacienteNombre String?
+  userId         String
+  createdAt      DateTime       @default(now())
+
+  medicamento Medicamento @relation(fields: [medicamentoId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@map("movimientos_medicamentos")
+}
+
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+  AJUSTE
+}
+
+// ==================== TAREAS DE MANTENIMIENTO BIOMÉDICO ====================
+
+enum EstadoTarea {
+  PENDIENTE
+  EN_PROCESO
+  COMPLETADO
+  CANCELADO
+}
+
+enum Recurrencia {
+  MENSUAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+}
+
+model TareaMantenimiento {
+  id            String            @id @default(cuid())
+  equipoId      String
+  asignadoAId   String?
+  asignadoPorId String
+  fecha         DateTime
+  tipo          TipoMantenimiento @default(PREVENTIVO)
+  descripcion   String?
+  estado        EstadoTarea       @default(PENDIENTE)
+  recurrencia   Recurrencia?
+  mantenimientoOrigenId String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  equipo      EquipoMedico @relation(fields: [equipoId], references: [id])
+  asignadoA   User?        @relation("tareasAsignadas",  fields: [asignadoAId],   references: [id])
+  asignadoPor User         @relation("tareasCreadas",    fields: [asignadoPorId], references: [id])
+
+  @@map("tareas_mantenimiento")
+}
+
+// ==================== ACCIONES DE DISPOSITIVO (QR) ====================
+
+enum TipoAccion {
+  TOMAR
+  MOVER
+  DEVOLVER
+  REPORTAR_PROBLEMA
+}
+
+model AccionDispositivo {
+  id        String     @id @default(cuid())
+  equipoId  String
+  userId    String
+  tipo      TipoAccion
+  area      String?
+  notas     String?
+  createdAt DateTime   @default(now())
+
+  equipo EquipoMedico @relation(fields: [equipoId], references: [id])
+  user   User         @relation(fields: [userId], references: [id])
+
+  @@map("acciones_dispositivo")
+}
