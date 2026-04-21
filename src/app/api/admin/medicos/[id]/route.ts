@@ -57,7 +57,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       `${a.apellidos} ${a.nombre}`.localeCompare(`${b.apellidos} ${b.nombre}`)
     );
 
-    const citas = citasRaw.map((c) => ({
+    const citas = citasRaw.map((c: (typeof citasRaw)[0]) => ({
       id: c.id,
       fecha: c.fecha,
       motivo: c.motivo,
