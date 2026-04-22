@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   Activity, Search, CheckCircle, Wrench, AlertTriangle,
   MapPin, Filter, X, RefreshCw, Plus, Pencil, ChevronDown, ChevronRight, LayoutList, Layers, QrCode,
@@ -27,6 +27,46 @@ const ESTADO_CFG: Record<string, { label: string; color: string; dot: string; ic
   EN_MANTENIMIENTO:  { label: "En mantenimiento",  color: "bg-amber-100 text-amber-700 ring-1 ring-amber-200",       dot: "bg-amber-400",  icon: Wrench },
   FUERA_DE_SERVICIO: { label: "Fuera de servicio", color: "bg-red-100 text-red-600 ring-1 ring-red-200",             dot: "bg-red-500",    icon: AlertTriangle },
 };
+
+function StatusBadge({ estado, onChange }: { estado: string; onChange: (s: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const cfg = ESTADO_CFG[estado] ?? { label: estado, color: "bg-slate-100 text-slate-600", dot: "bg-slate-400", icon: Activity };
+  const Icon = cfg.icon;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative w-fit">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title="Cambiar estado"
+        className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full cursor-pointer hover:opacity-75 transition-opacity ${cfg.color}`}
+      >
+        <Icon size={11} /> {cfg.label} <ChevronDown size={10} className="ml-0.5 opacity-60" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-30 bg-white rounded-xl shadow-lg ring-1 ring-slate-200 overflow-hidden min-w-max">
+          {Object.entries(ESTADO_CFG).map(([key, c]) => {
+            const CIcon = c.icon;
+            return (
+              <button key={key} onClick={() => { onChange(key); setOpen(false); }}
+                className={`flex items-center gap-2 w-full px-4 py-2.5 text-xs font-semibold hover:bg-slate-50 transition-colors text-left ${estado === key ? "opacity-40 cursor-default pointer-events-none" : ""}`}>
+                <span className={`w-2 h-2 rounded-full shrink-0 ${c.dot}`} />
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const emptyForm = { nombre: "", marca: "", modelo: "", numeroSerie: "", fechaAdquisicion: "", ubicacion: "", estado: "ACTIVO", descripcion: "" };
 const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500";
@@ -193,9 +233,8 @@ function MantModal({ equipo, onClose, onSaved }: { equipo: Equipo; onClose: () =
   );
 }
 
-function EquipoRow({ eq, onEdit, onQR, onMant }: { eq: Equipo; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; onMant: (eq: Equipo) => void }) {
+function EquipoRow({ eq, onEdit, onQR, onMant, onStatusChange }: { eq: Equipo; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; onMant: (eq: Equipo) => void; onStatusChange: (id: string, s: string) => void }) {
   const cfg = ESTADO_CFG[eq.estado] ?? { label: eq.estado, color: "bg-slate-100 text-slate-600", dot: "bg-slate-400", icon: Activity };
-  const Icon = cfg.icon;
   const ultimo = eq.mantenimientos[eq.mantenimientos.length - 1];
   return (
     <tr className="hover:bg-slate-50 transition-colors group">
@@ -210,9 +249,7 @@ function EquipoRow({ eq, onEdit, onQR, onMant }: { eq: Equipo; onEdit: (eq: Equi
       </td>
       <td className="px-6 py-4 text-sm text-slate-600 font-mono">{eq.numeroSerie || "—"}</td>
       <td className="px-6 py-4">
-        <span className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full w-fit ${cfg.color}`}>
-          <Icon size={11} />{cfg.label}
-        </span>
+        <StatusBadge estado={eq.estado} onChange={(s) => onStatusChange(eq.id, s)} />
       </td>
       <td className="px-6 py-4 text-sm text-slate-500">
         {ultimo ? new Date(ultimo.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "Sin registro"}
@@ -234,7 +271,7 @@ function EquipoRow({ eq, onEdit, onQR, onMant }: { eq: Equipo; onEdit: (eq: Equi
   );
 }
 
-function AreaGroup({ area, equipos, onEdit, onQR, onMant, defaultOpen }: { area: string; equipos: Equipo[]; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; onMant: (eq: Equipo) => void; defaultOpen: boolean }) {
+function AreaGroup({ area, equipos, onEdit, onQR, onMant, onStatusChange, defaultOpen }: { area: string; equipos: Equipo[]; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; onMant: (eq: Equipo) => void; onStatusChange: (id: string, s: string) => void; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const activos = equipos.filter((e) => e.estado === "ACTIVO").length;
   const enMant  = equipos.filter((e) => e.estado === "EN_MANTENIMIENTO").length;
@@ -270,7 +307,7 @@ function AreaGroup({ area, equipos, onEdit, onQR, onMant, defaultOpen }: { area:
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {equipos.map((eq) => <EquipoRow key={eq.id} eq={eq} onEdit={onEdit} onQR={onQR} onMant={onMant} />)}
+            {equipos.map((eq) => <EquipoRow key={eq.id} eq={eq} onEdit={onEdit} onQR={onQR} onMant={onMant} onStatusChange={onStatusChange} />)}
           </tbody>
         </table>
       )}
@@ -370,6 +407,11 @@ export default function InventarioPage() {
     setSaving(false);
   };
 
+  const handleStatusChange = async (id: string, newEstado: string) => {
+    setEquipos((prev) => prev.map((e) => e.id === id ? { ...e, estado: newEstado } : e));
+    await fetch(`/api/equipos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: newEstado }) });
+  };
+
   const closeModal = () => { setShowNew(false); setEditEq(null); };
   const isFiltering = filterEstado !== "TODOS" || filterUbicacion !== "TODAS" || search;
 
@@ -464,7 +506,7 @@ export default function InventarioPage() {
           /* ── Vista por área ── */
           <div>
             {byArea.map(([area, eqs], idx) => (
-              <AreaGroup key={area} area={area} equipos={eqs} onEdit={openEdit} onQR={setQrEquipo} onMant={setMantEquipo} defaultOpen={idx === 0 || isFiltering as boolean} />
+              <AreaGroup key={area} area={area} equipos={eqs} onEdit={openEdit} onQR={setQrEquipo} onMant={setMantEquipo} onStatusChange={handleStatusChange} defaultOpen={idx === 0 || isFiltering as boolean} />
             ))}
           </div>
         ) : (
@@ -484,7 +526,6 @@ export default function InventarioPage() {
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((eq) => {
                   const cfg = ESTADO_CFG[eq.estado] ?? { label: eq.estado, color: "bg-slate-100 text-slate-600", dot: "bg-slate-400", icon: Activity };
-                  const Icon = cfg.icon;
                   const ultimo = eq.mantenimientos[eq.mantenimientos.length - 1];
                   return (
                     <tr key={eq.id} className="hover:bg-slate-50 transition-colors group">
@@ -504,9 +545,7 @@ export default function InventarioPage() {
                           : <span className="text-slate-400 text-sm">—</span>}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full w-fit ${cfg.color}`}>
-                          <Icon size={11} />{cfg.label}
-                        </span>
+                        <StatusBadge estado={eq.estado} onChange={(s) => handleStatusChange(eq.id, s)} />
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
                         {ultimo ? new Date(ultimo.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "Sin registro"}
