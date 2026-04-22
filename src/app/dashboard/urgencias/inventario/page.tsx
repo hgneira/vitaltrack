@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import {
   Activity, Search, CheckCircle, Wrench, AlertTriangle,
   MapPin, Filter, X, RefreshCw, Plus, Pencil, ChevronDown, ChevronRight, LayoutList, Layers, QrCode,
+  ClipboardList, Clock, ChevronUp,
 } from "lucide-react";
 import QRModal from "./QRModal";
 
@@ -30,7 +31,169 @@ const ESTADO_CFG: Record<string, { label: string; color: string; dot: string; ic
 const emptyForm = { nombre: "", marca: "", modelo: "", numeroSerie: "", fechaAdquisicion: "", ubicacion: "", estado: "ACTIVO", descripcion: "" };
 const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500";
 
-function EquipoRow({ eq, onEdit, onQR }: { eq: Equipo; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void }) {
+const TIPO_MANT = ["PREVENTIVO", "CORRECTIVO", "CALIBRACION", "LIMPIEZA", "VERIFICACION"] as const;
+const emptyMant = { tipo: "PREVENTIVO", fecha: new Date().toISOString().slice(0, 10), tecnico: "", descripcion: "", costo: "", proximoMantenimiento: "", nuevoEstado: "" };
+
+interface Mantenimiento {
+  id: string; tipo: string; fecha: string; tecnico?: string;
+  descripcion?: string; costo?: number; proximoMantenimiento?: string;
+}
+
+function MantModal({ equipo, onClose, onSaved }: { equipo: Equipo; onClose: () => void; onSaved: () => void }) {
+  const [records, setRecords]   = useState<Mantenimiento[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm]         = useState(emptyMant);
+  const [saving, setSaving]     = useState(false);
+  const [err, setErr]           = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    const data = await fetch(`/api/equipos/${equipo.id}/mantenimientos`).then((r) => r.json());
+    setRecords(Array.isArray(data) ? data : []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault(); setSaving(true); setErr("");
+    const res = await fetch(`/api/equipos/${equipo.id}/mantenimientos`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
+    });
+    if (res.ok) { await load(); setShowForm(false); setForm(emptyMant); onSaved(); }
+    else { const d = await res.json(); setErr(d.error ?? "Error al guardar"); }
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="font-semibold text-slate-900 flex items-center gap-2">
+              <Wrench size={16} className="text-amber-500" /> Mantenimientos
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">{equipo.nombre}</p>
+          </div>
+          <button onClick={onClose}><X size={18} className="text-slate-400" /></button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+          {/* Register button */}
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-sm font-medium transition-colors ring-1 ring-amber-200"
+          >
+            <span className="flex items-center gap-2"><Plus size={15} /> Registrar nuevo mantenimiento</span>
+            {showForm ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </button>
+
+          {/* Inline form */}
+          {showForm && (
+            <form onSubmit={handleSave} className="bg-slate-50 rounded-xl p-5 space-y-4 ring-1 ring-slate-200">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Tipo *</label>
+                  <select required value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} className={inputCls}>
+                    {TIPO_MANT.map((t) => <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Fecha *</label>
+                  <input required type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} className={inputCls} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Técnico</label>
+                  <input value={form.tecnico} onChange={(e) => setForm({ ...form, tecnico: e.target.value })} className={inputCls} placeholder="Nombre del técnico" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Costo (MXN)</label>
+                  <input type="number" min="0" step="0.01" value={form.costo} onChange={(e) => setForm({ ...form, costo: e.target.value })} className={inputCls} placeholder="0.00" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Descripción</label>
+                <textarea value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} rows={2} className={inputCls + " resize-none"} placeholder="Detalles del mantenimiento…" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Próximo mantenimiento</label>
+                  <input type="date" value={form.proximoMantenimiento} onChange={(e) => setForm({ ...form, proximoMantenimiento: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Actualizar estado</label>
+                  <select value={form.nuevoEstado} onChange={(e) => setForm({ ...form, nuevoEstado: e.target.value })} className={inputCls}>
+                    <option value="">Sin cambio</option>
+                    <option value="ACTIVO">Activo</option>
+                    <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+                    <option value="FUERA_DE_SERVICIO">Fuera de servicio</option>
+                  </select>
+                </div>
+              </div>
+              {err && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{err}</p>}
+              <div className="flex gap-3 pt-1">
+                <button type="submit" disabled={saving} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-50">
+                  {saving ? "Guardando…" : "Guardar mantenimiento"}
+                </button>
+                <button type="button" onClick={() => { setShowForm(false); setForm(emptyMant); }} className="px-4 py-2.5 rounded-lg text-sm text-slate-600 bg-slate-200 hover:bg-slate-300">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* History */}
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <ClipboardList size={13} /> Historial ({records.length})
+            </p>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : records.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-sm">Sin registros de mantenimiento</div>
+            ) : (
+              <div className="space-y-2">
+                {records.map((r) => (
+                  <div key={r.id} className="flex items-start gap-3 bg-slate-50 rounded-xl px-4 py-3 ring-1 ring-slate-100">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Wrench size={13} className="text-amber-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-slate-700">{r.tipo.charAt(0) + r.tipo.slice(1).toLowerCase()}</span>
+                        <span className="text-xs text-slate-400 flex items-center gap-1 shrink-0">
+                          <Clock size={11} />
+                          {new Date(r.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                        </span>
+                      </div>
+                      {r.tecnico && <p className="text-xs text-slate-500 mt-0.5">Técnico: {r.tecnico}</p>}
+                      {r.descripcion && <p className="text-xs text-slate-500 mt-0.5 truncate">{r.descripcion}</p>}
+                      {r.proximoMantenimiento && (
+                        <p className="text-xs text-amber-600 mt-0.5">
+                          Próximo: {new Date(r.proximoMantenimiento).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                        </p>
+                      )}
+                    </div>
+                    {r.costo != null && (
+                      <span className="text-xs font-medium text-slate-600 shrink-0">${r.costo.toLocaleString("es-MX")}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EquipoRow({ eq, onEdit, onQR, onMant }: { eq: Equipo; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; onMant: (eq: Equipo) => void }) {
   const cfg = ESTADO_CFG[eq.estado] ?? { label: eq.estado, color: "bg-slate-100 text-slate-600", dot: "bg-slate-400", icon: Activity };
   const Icon = cfg.icon;
   const ultimo = eq.mantenimientos[eq.mantenimientos.length - 1];
@@ -59,6 +222,9 @@ function EquipoRow({ eq, onEdit, onQR }: { eq: Equipo; onEdit: (eq: Equipo) => v
           <button onClick={() => onQR(eq)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg" title="Ver QR">
             <QrCode size={14} />
           </button>
+          <button onClick={() => onMant(eq)} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg" title="Mantenimientos">
+            <Wrench size={14} />
+          </button>
           <button onClick={() => onEdit(eq)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg" title="Editar">
             <Pencil size={14} />
           </button>
@@ -68,7 +234,7 @@ function EquipoRow({ eq, onEdit, onQR }: { eq: Equipo; onEdit: (eq: Equipo) => v
   );
 }
 
-function AreaGroup({ area, equipos, onEdit, onQR, defaultOpen }: { area: string; equipos: Equipo[]; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; defaultOpen: boolean }) {
+function AreaGroup({ area, equipos, onEdit, onQR, onMant, defaultOpen }: { area: string; equipos: Equipo[]; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; onMant: (eq: Equipo) => void; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const activos = equipos.filter((e) => e.estado === "ACTIVO").length;
   const enMant  = equipos.filter((e) => e.estado === "EN_MANTENIMIENTO").length;
@@ -104,7 +270,7 @@ function AreaGroup({ area, equipos, onEdit, onQR, defaultOpen }: { area: string;
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {equipos.map((eq) => <EquipoRow key={eq.id} eq={eq} onEdit={onEdit} onQR={onQR} />)}
+            {equipos.map((eq) => <EquipoRow key={eq.id} eq={eq} onEdit={onEdit} onQR={onQR} onMant={onMant} />)}
           </tbody>
         </table>
       )}
@@ -121,11 +287,12 @@ export default function InventarioPage() {
   const [viewMode, setViewMode]           = useState<"areas" | "lista">("areas");
 
   // Modals
-  const [showNew, setShowNew]   = useState(false);
-  const [editEq, setEditEq]     = useState<Equipo | null>(null);
-  const [qrEquipo, setQrEquipo] = useState<Equipo | null>(null);
-  const [form, setForm]         = useState(emptyForm);
-  const [saving, setSaving]     = useState(false);
+  const [showNew, setShowNew]     = useState(false);
+  const [editEq, setEditEq]       = useState<Equipo | null>(null);
+  const [qrEquipo, setQrEquipo]   = useState<Equipo | null>(null);
+  const [mantEquipo, setMantEquipo] = useState<Equipo | null>(null);
+  const [form, setForm]           = useState(emptyForm);
+  const [saving, setSaving]       = useState(false);
   const [formError, setFormError] = useState("");
 
   const load = async () => {
@@ -297,7 +464,7 @@ export default function InventarioPage() {
           /* ── Vista por área ── */
           <div>
             {byArea.map(([area, eqs], idx) => (
-              <AreaGroup key={area} area={area} equipos={eqs} onEdit={openEdit} onQR={setQrEquipo} defaultOpen={idx === 0 || isFiltering as boolean} />
+              <AreaGroup key={area} area={area} equipos={eqs} onEdit={openEdit} onQR={setQrEquipo} onMant={setMantEquipo} defaultOpen={idx === 0 || isFiltering as boolean} />
             ))}
           </div>
         ) : (
@@ -349,6 +516,9 @@ export default function InventarioPage() {
                           <button onClick={() => setQrEquipo(eq)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg" title="Ver QR">
                             <QrCode size={14} />
                           </button>
+                          <button onClick={() => setMantEquipo(eq)} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg" title="Mantenimientos">
+                            <Wrench size={14} />
+                          </button>
                           <button onClick={() => openEdit(eq)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg" title="Editar">
                             <Pencil size={14} />
                           </button>
@@ -365,6 +535,15 @@ export default function InventarioPage() {
 
       {/* QR Modal */}
       {qrEquipo && <QRModal equipo={qrEquipo} onClose={() => setQrEquipo(null)} />}
+
+      {/* Maintenance Modal */}
+      {mantEquipo && (
+        <MantModal
+          equipo={mantEquipo}
+          onClose={() => setMantEquipo(null)}
+          onSaved={load}
+        />
+      )}
 
       {/* Modal nuevo / editar */}
       {(showNew || editEq) && (
