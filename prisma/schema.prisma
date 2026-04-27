@@ -52,6 +52,10 @@ model User {
   // Device actions (QR)
   accionesDispositivo AccionDispositivo[]
 
+  verificacionesHechas VerificacionAccesorios[] @relation("verificacionesHechas")
+  documentosSubidos    DocumentoEquipo[]        @relation("documentosSubidos")
+  guiasActualizadas    GuiaRapida[]             @relation("guiasActualizadas")
+
   @@map("usuarios")
 }
 
@@ -173,6 +177,10 @@ model EquipoMedico {
   mantenimientos Mantenimiento[]
   tareas         TareaMantenimiento[]
   acciones       AccionDispositivo[]
+  accesorios     AccesorioEquipo[]
+  verificaciones VerificacionAccesorios[]
+  documentos     DocumentoEquipo[]
+  guiaRapida     GuiaRapida?
 
   @@map("equipos_medicos")
 }
@@ -203,6 +211,9 @@ enum TipoMantenimiento {
   PREVENTIVO
   CORRECTIVO
   INSPECCION
+  CALIBRACION
+  LIMPIEZA
+  VERIFICACION
 }
 
 // ==================== MÓDULO DE EMPLEADOS (HR) ====================
@@ -459,4 +470,80 @@ model AccionDispositivo {
   user   User         @relation(fields: [userId], references: [id])
 
   @@map("acciones_dispositivo")
+}
+
+// ==================== ACCESORIOS Y VERIFICACIONES ====================
+
+model AccesorioEquipo {
+  id        String   @id @default(cuid())
+  equipoId  String
+  equipo    EquipoMedico @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  nombre    String
+  requerido Boolean  @default(true)
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  items VerificacionItem[]
+
+  @@map("accesorios_equipo")
+}
+
+model VerificacionAccesorios {
+  id              String   @id @default(cuid())
+  equipoId        String
+  equipo          EquipoMedico @relation(fields: [equipoId], references: [id])
+  verificadoPorId String
+  verificadoPor   User     @relation("verificacionesHechas", fields: [verificadoPorId], references: [id])
+  fecha           DateTime @default(now())
+  notas           String?
+  items           VerificacionItem[]
+
+  @@map("verificaciones_accesorios")
+}
+
+model VerificacionItem {
+  id             String @id @default(cuid())
+  verificacionId String
+  verificacion   VerificacionAccesorios @relation(fields: [verificacionId], references: [id], onDelete: Cascade)
+  accesorioId    String
+  accesorio      AccesorioEquipo        @relation(fields: [accesorioId], references: [id])
+  presente       Boolean
+
+  @@map("verificacion_items")
+}
+
+// ==================== DOCUMENTOS (MANUALES PDF) ====================
+
+model DocumentoEquipo {
+  id          String        @id @default(cuid())
+  equipoId    String
+  equipo      EquipoMedico  @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  tipo        TipoDocumento
+  nombre      String
+  url         String        @db.Text
+  subidoPorId String
+  subidoPor   User          @relation("documentosSubidos", fields: [subidoPorId], references: [id])
+  createdAt   DateTime      @default(now())
+
+  @@map("documentos_equipo")
+}
+
+enum TipoDocumento {
+  MANUAL_USUARIO
+  MANUAL_SERVICIO
+  OTRO
+}
+
+// ==================== GUÍA RÁPIDA ====================
+
+model GuiaRapida {
+  id          String   @id @default(cuid())
+  equipoId    String   @unique
+  equipo      EquipoMedico @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  pasos       Json
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("guiasActualizadas", fields: [updatedById], references: [id])
+
+  @@map("guias_rapidas")
 }

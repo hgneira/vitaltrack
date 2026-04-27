@@ -4,8 +4,9 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import {
   Activity, Search, CheckCircle, Wrench, AlertTriangle,
   MapPin, Filter, X, RefreshCw, Plus, Pencil, ChevronDown, ChevronRight, LayoutList, Layers, QrCode,
-  ClipboardList, Clock, ChevronUp,
+  ClipboardList, Clock, ChevronUp, ExternalLink,
 } from "lucide-react";
+import Link from "next/link";
 import QRModal from "./QRModal";
 
 interface Equipo {
@@ -262,6 +263,9 @@ function EquipoRow({ eq, onEdit, onQR, onMant, onStatusChange }: { eq: Equipo; o
           <button onClick={() => onMant(eq)} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg" title="Mantenimientos">
             <Wrench size={14} />
           </button>
+          <Link href={`/dashboard/equipos/${eq.id}`} className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg" title="Ver ficha">
+            <ExternalLink size={14} />
+          </Link>
           <button onClick={() => onEdit(eq)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg" title="Editar">
             <Pencil size={14} />
           </button>
@@ -558,6 +562,9 @@ export default function InventarioPage() {
                           <button onClick={() => setMantEquipo(eq)} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg" title="Mantenimientos">
                             <Wrench size={14} />
                           </button>
+                          <Link href={`/dashboard/equipos/${eq.id}`} className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg" title="Ver ficha">
+                            <ExternalLink size={14} />
+                          </Link>
                           <button onClick={() => openEdit(eq)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg" title="Editar">
                             <Pencil size={14} />
                           </button>

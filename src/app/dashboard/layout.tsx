@@ -8,8 +8,10 @@ import {
   LayoutDashboard, Users, CalendarDays, Stethoscope,
   SprayCan, Pill, UserCog, LogOut, ChevronRight, Bell, ClipboardList, UserCircle,
   Activity, Wrench, BarChart2, FileText, Menu, X, PanelLeftClose, PanelLeftOpen,
+  Building2,
 } from "lucide-react";
 import NotificationBell from "./_components/NotificationBell";
+import Clock from "./_components/Clock";
 
 // Navigation items per role
 const ALL_NAV = [
@@ -55,6 +57,12 @@ const ALL_NAV = [
     items: [
       { href: "/dashboard/limpieza", label: "Limpieza / Mantto.", icon: SprayCan, roles: ["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"] },
       { href: "/dashboard/farmacia", label: "Farmacia", icon: Pill, roles: ["ADMINISTRADOR", "FARMACIA"] },
+    ],
+  },
+  {
+    section: "Hospital",
+    items: [
+      { href: "/dashboard/equipos", label: "Inventario General", icon: Building2, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "MANTENIMIENTO", "URGENCIAS"] },
     ],
   },
   {
@@ -309,6 +317,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
           </div>
 
+          <Clock />
           <NotificationBell />
         </div>
         <main className="flex-1 overflow-auto">{children}</main>
