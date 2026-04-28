@@ -192,6 +192,11 @@ export default function DetallePacientePage() {
   const [dispForm, setDispForm] = useState<any>({});
   const [savingDisp, setSavingDisp] = useState(false);
 
+  // Consentimiento
+  const [showConsentForm, setShowConsentForm] = useState(false);
+  const [consentForm, setConsentForm] = useState({ firmanteTipo: "PACIENTE", firmanteNombre: "", firmanteRelacion: "", accepted: false });
+  const [savingConsent, setSavingConsent] = useState(false);
+
   // ── Load data ────────────────────────────────────────────────────────────────
 
   const loadPaciente = () =>
@@ -375,6 +380,37 @@ export default function DetallePacientePage() {
     await loadDispositivos(expediente!.id);
   };
 
+  // ── Consentimiento ────────────────────────────────────────────────────────────
+
+  const openConsentForm = () => {
+    const c = paciente?.consentimiento;
+    setConsentForm({
+      firmanteTipo: c?.firmanteTipo ?? "PACIENTE",
+      firmanteNombre: c?.firmanteNombre ?? "",
+      firmanteRelacion: "",
+      accepted: c?.aceptado ?? false,
+    });
+    setShowConsentForm(true);
+  };
+
+  const handleSaveConsent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingConsent(true);
+    await fetch(`/api/pacientes/${pacienteId}/consentimiento`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        aceptado: consentForm.accepted,
+        firmanteTipo: consentForm.firmanteTipo,
+        firmanteNombre: consentForm.firmanteNombre || null,
+        firmanteRelacion: consentForm.firmanteRelacion || null,
+      }),
+    });
+    await loadPaciente();
+    setShowConsentForm(false);
+    setSavingConsent(false);
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   if (loadingPaciente) {
@@ -440,17 +476,19 @@ export default function DetallePacientePage() {
                       )}
                     </div>
                   </div>
-                  {paciente.consentimiento?.aceptado ? (
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg ring-1 ring-emerald-200 shrink-0">
-                      <ShieldCheck size={13} />
-                      Consentimiento aceptado
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg ring-1 ring-amber-200 shrink-0">
-                      <Shield size={13} />
-                      Sin consentimiento
-                    </div>
-                  )}
+                  <button
+                    onClick={openConsentForm}
+                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg ring-1 shrink-0 transition-opacity hover:opacity-80 ${
+                      paciente.consentimiento?.aceptado
+                        ? "text-emerald-700 bg-emerald-50 ring-emerald-200"
+                        : "text-amber-700 bg-amber-50 ring-amber-200"
+                    }`}
+                  >
+                    {paciente.consentimiento?.aceptado
+                      ? <><ShieldCheck size={13} /> Consentimiento aceptado</>
+                      : <><Shield size={13} /> Sin consentimiento — clic para agregar</>
+                    }
+                  </button>
                 </div>
                 {paciente.curp && (
                   <p className="text-xs text-slate-500 mt-2">
@@ -1036,6 +1074,68 @@ export default function DetallePacientePage() {
               </button>
               <button onClick={() => setDeleteNota(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-200">Cancelar</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Consentimiento modal ──────────────────────────────────────────── */}
+      {showConsentForm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={17} className="text-cyan-600" />
+                <h2 className="font-semibold text-slate-900">Consentimiento informado</h2>
+              </div>
+              <button onClick={() => setShowConsentForm(false)}><X size={18} className="text-slate-400" /></button>
+            </div>
+            <form onSubmit={handleSaveConsent} className="p-6 space-y-4 text-sm text-slate-700">
+              <div className="bg-slate-50 rounded-xl p-4 space-y-1 text-xs text-slate-600">
+                <p className="font-semibold text-slate-700 mb-1">Aviso de Privacidad — LFPDPPP</p>
+                <p>Los datos personales y de salud serán tratados para brindar atención médica, coordinación con especialistas y cumplimiento de NOM-004-SSA3-2012. El paciente tiene derechos <strong>ARCO</strong> (Acceso, Rectificación, Cancelación, Oposición) contactando al área administrativa.</p>
+              </div>
+
+              <div>
+                <p className="font-medium text-slate-800 mb-2 text-xs uppercase tracking-wide">¿Quién firma?</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {["PACIENTE", "TUTOR", "FAMILIAR"].map((tipo) => (
+                    <button key={tipo} type="button" onClick={() => setConsentForm({ ...consentForm, firmanteTipo: tipo })}
+                      className={`py-2 rounded-lg text-xs font-medium border transition-colors ${consentForm.firmanteTipo === tipo ? "bg-cyan-600 text-white border-cyan-600" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}>
+                      {tipo === "PACIENTE" ? "El paciente" : tipo === "TUTOR" ? "Tutor legal" : "Familiar"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {consentForm.firmanteTipo !== "PACIENTE" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Nombre del firmante *</label>
+                    <input required value={consentForm.firmanteNombre} onChange={(e) => setConsentForm({ ...consentForm, firmanteNombre: e.target.value })} className={inputClass} placeholder="Nombre completo" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Relación *</label>
+                    <input required value={consentForm.firmanteRelacion} onChange={(e) => setConsentForm({ ...consentForm, firmanteRelacion: e.target.value })} className={inputClass} placeholder="Madre, Padre, Tutor…" />
+                  </div>
+                </div>
+              )}
+
+              <button type="button" onClick={() => setConsentForm({ ...consentForm, accepted: !consentForm.accepted })}
+                className={`flex items-start gap-3 w-full text-left py-3 px-4 rounded-xl border transition-colors ${consentForm.accepted ? "border-cyan-400 bg-cyan-50" : "border-slate-200 hover:border-slate-300"}`}>
+                <span className={`mt-0.5 shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center ${consentForm.accepted ? "bg-cyan-600 border-cyan-600" : "border-slate-400"}`}>
+                  {consentForm.accepted && <svg viewBox="0 0 10 8" className="w-2.5 fill-white"><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </span>
+                <span className="text-xs text-slate-700">Acepto el aviso de privacidad y autorizo el tratamiento de datos personales y de salud para los fines descritos.</span>
+              </button>
+
+              <div className="flex gap-3 pt-1">
+                <button type="submit" disabled={savingConsent || !consentForm.accepted || (consentForm.firmanteTipo !== "PACIENTE" && !consentForm.firmanteNombre)}
+                  className="flex-1 bg-cyan-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                  {savingConsent ? "Guardando…" : "Guardar consentimiento"}
+                </button>
+                <button type="button" onClick={() => setShowConsentForm(false)} className="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200">Cancelar</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
