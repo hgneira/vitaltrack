@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import {
   Activity, MapPin, CheckCircle, Wrench, AlertTriangle,
   ArrowLeft, Package, ArrowRightLeft, RotateCcw, Flag,
-  User, Clock, ChevronDown, Loader2, BookOpen,
+  Loader2, BookOpen, ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -26,20 +26,6 @@ const ESTADO_CFG: Record<string, { label: string; color: string; bg: string; ico
   FUERA_DE_SERVICIO: { label: "Fuera de servicio", color: "text-red-700",    bg: "bg-red-100",    icon: AlertTriangle },
 };
 
-const ACCION_CFG: Record<string, { label: string; icon: React.ElementType; color: string; bg: string; border: string }> = {
-  TOMAR:             { label: "Tomó el equipo",     icon: Package,        color: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-200" },
-  MOVER:             { label: "Movió de área",       icon: ArrowRightLeft, color: "text-violet-700",  bg: "bg-violet-50",  border: "border-violet-200" },
-  DEVOLVER:          { label: "Devolvió el equipo",  icon: RotateCcw,      color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
-  REPORTAR_PROBLEMA: { label: "Reportó un problema", icon: Flag,           color: "text-red-700",     bg: "bg-red-50",     border: "border-red-200" },
-};
-
-const ROL_LABELS: Record<string, string> = {
-  ADMINISTRADOR: "Admin", MEDICO: "Médico", ENFERMERIA: "Enfermería",
-  INGENIERIA_BIOMEDICA: "Ing. Biomédica", JEFE_BIOMEDICA: "Jefe Biomédica",
-  RECEPCION: "Recepción", LIMPIEZA: "Limpieza", MANTENIMIENTO: "Mantenimiento",
-  FARMACIA: "Farmacia", URGENCIAS: "Urgencias",
-};
-
 type ActionType = "TOMAR" | "MOVER" | "DEVOLVER" | "REPORTAR_PROBLEMA";
 
 const ACCIONES: { tipo: ActionType; label: string; desc: string; icon: React.ElementType; color: string; nuevoEstado?: string }[] = [
@@ -51,15 +37,14 @@ const ACCIONES: { tipo: ActionType; label: string; desc: string; icon: React.Ele
 
 export default function DispositivoPage() {
   const { id } = useParams<{ id: string }>();
-  const [equipo, setEquipo]           = useState<Equipo | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [guia, setGuia]               = useState<string[]>([]);
-  const [showGuia, setShowGuia]       = useState(true);
-  const [showHistory, setShowHistory] = useState(false);
+  const [equipo, setEquipo]       = useState<Equipo | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [guia, setGuia]           = useState<string[]>([]);
+  const [showGuia, setShowGuia]   = useState(true);
   const [accionActiva, setAccionActiva] = useState<ActionType | null>(null);
-  const [area, setArea]       = useState("");
-  const [notas, setNotas]     = useState("");
-  const [saving, setSaving]   = useState(false);
+  const [area, setArea]           = useState("");
+  const [notas, setNotas]         = useState("");
+  const [saving, setSaving]       = useState(false);
   const [saveError, setSaveError] = useState("");
 
   const load = async () => {
@@ -130,7 +115,7 @@ export default function DispositivoPage() {
       {/* Header */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-          <Link href="/dashboard/urgencias/inventario" className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100">
+          <Link href="/dashboard" className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100">
             <ArrowLeft size={18} />
           </Link>
           <div className="flex-1 min-w-0">
@@ -172,7 +157,7 @@ export default function DispositivoPage() {
           )}
         </div>
 
-        {/* ── Guía rápida ── */}
+        {/* Guía rápida */}
         {guia.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
             <button
@@ -185,7 +170,6 @@ export default function DispositivoPage() {
               </span>
               <ChevronDown size={15} className={`text-slate-400 transition-transform ${showGuia ? "rotate-180" : ""}`} />
             </button>
-
             {showGuia && (
               <div className="border-t border-slate-100 px-5 py-4 space-y-3">
                 {guia.map((paso, i) => (
@@ -201,7 +185,7 @@ export default function DispositivoPage() {
           </div>
         )}
 
-        {/* ── Action buttons ── */}
+        {/* Action buttons */}
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-1">Registrar acción</p>
           <div className="grid grid-cols-2 gap-3">
@@ -221,68 +205,9 @@ export default function DispositivoPage() {
             })}
           </div>
         </div>
-
-        {/* ── History ── */}
-        <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
-          <button
-            onClick={() => setShowHistory((v) => !v)}
-            className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-          >
-            <span className="flex items-center gap-2">
-              <Clock size={15} className="text-slate-400" />
-              Historial de acciones
-              {equipo.acciones.length > 0 && (
-                <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-medium">{equipo.acciones.length}</span>
-              )}
-            </span>
-            <ChevronDown size={15} className={`text-slate-400 transition-transform ${showHistory ? "rotate-180" : ""}`} />
-          </button>
-
-          {showHistory && (
-            <div className="border-t border-slate-100 divide-y divide-slate-50">
-              {equipo.acciones.length === 0 ? (
-                <p className="px-5 py-6 text-sm text-slate-400 text-center">Sin acciones registradas</p>
-              ) : (
-                equipo.acciones.map((accion) => {
-                  const cfg = ACCION_CFG[accion.tipo] ?? ACCION_CFG.TOMAR;
-                  const Icon = cfg.icon;
-                  return (
-                    <div key={accion.id} className={`flex items-start gap-3 px-5 py-3.5 ${cfg.bg} border-l-4 ${cfg.border}`}>
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${cfg.bg}`}>
-                        <Icon size={13} className={cfg.color} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
-                          <p className="text-xs text-slate-400 shrink-0">
-                            {new Date(accion.createdAt).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <User size={10} className="text-slate-400" />
-                          <p className="text-xs text-slate-500">
-                            {accion.user.nombre} {accion.user.apellidos ?? ""} · {ROL_LABELS[accion.user.rol] ?? accion.user.rol}
-                          </p>
-                        </div>
-                        {accion.area && (
-                          <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                            <MapPin size={9} />{accion.area}
-                          </p>
-                        )}
-                        {accion.notas && (
-                          <p className="text-xs text-slate-500 mt-1 italic">"{accion.notas}"</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* ── Bottom sheet ── */}
+      {/* Bottom sheet */}
       {accionActiva && (
         <>
           <div className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm" onClick={closeSheet} />
