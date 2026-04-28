@@ -13,6 +13,12 @@ type Tab = "accesorios" | "manuales" | "guia" | "mantenimiento";
 const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500";
 
 interface Equipo { id: string; nombre: string; marca?: string; modelo?: string; numeroSerie?: string; ubicacion?: string; estado: string; }
+
+const RIESGO_CFG: Record<string, { label: string; color: string; dot: string }> = {
+  BAJO:     { label: "Riesgo Bajo",     color: "bg-emerald-100 text-emerald-700 ring-emerald-200", dot: "bg-emerald-500" },
+  MODERADO: { label: "Riesgo Moderado", color: "bg-amber-100 text-amber-700 ring-amber-200",       dot: "bg-amber-500" },
+  ALTO:     { label: "Riesgo Alto",     color: "bg-red-100 text-red-700 ring-red-200",              dot: "bg-red-500" },
+};
 interface Accesorio { id: string; nombre: string; requerido: boolean; orden: number; }
 interface VerifItem { accesorioId: string; accesorio: { nombre: string }; presente: boolean; }
 interface Verificacion { id: string; fecha: string; notas?: string; verificadoPor: { nombre: string; apellidos?: string }; items: VerifItem[]; }
@@ -56,6 +62,10 @@ export default function DeviceDetailPage() {
   // Mantenimiento
   const [mantenimientos, setMantenimientos] = useState<Mantenimiento[]>([]);
 
+  // Riesgo
+  const [riesgo, setRiesgo] = useState<{ nivel: string; score: number; factores: string[] } | null>(null);
+  const [showRiesgoTooltip, setShowRiesgoTooltip] = useState(false);
+
   useEffect(() => {
     fetch(`/api/equipos/${id}`).then(r => r.json()).then(d => setEquipo(d.equipo ?? d));
     loadAccesorios();
@@ -63,6 +73,10 @@ export default function DeviceDetailPage() {
     loadDocumentos();
     loadGuia();
     loadMantenimientos();
+    fetch(`/api/equipos/riesgo?equipoId=${id}`)
+      .then(r => r.json())
+      .then((data: any[]) => { if (Array.isArray(data) && data[0]) setRiesgo(data[0]); })
+      .catch(() => {});
   }, [id]);
 
   const loadAccesorios = () =>
@@ -170,6 +184,30 @@ export default function DeviceDetailPage() {
           </div>
           {equipo && <p className="text-xs text-slate-400 mt-0.5">{[equipo.marca, equipo.modelo, equipo.numeroSerie ? `S/N ${equipo.numeroSerie}` : null].filter(Boolean).join(" · ")}</p>}
         </div>
+        {riesgo && (() => {
+          const cfg = RIESGO_CFG[riesgo.nivel];
+          return (
+            <div className="relative">
+              <button
+                onMouseEnter={() => setShowRiesgoTooltip(true)}
+                onMouseLeave={() => setShowRiesgoTooltip(false)}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-full ring-1 ${cfg.color}`}
+              >
+                <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                {cfg.label}
+                <span className="opacity-60">({riesgo.score})</span>
+              </button>
+              {showRiesgoTooltip && riesgo.factores.length > 0 && (
+                <div className="absolute right-0 top-8 z-20 bg-slate-900 text-white text-xs rounded-xl px-4 py-3 shadow-lg w-56">
+                  <p className="font-semibold mb-1.5 text-slate-300">Factores de riesgo</p>
+                  <ul className="space-y-1">
+                    {riesgo.factores.map((f, i) => <li key={i} className="flex items-start gap-1.5"><span className="mt-0.5 shrink-0">•</span>{f}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Tabs */}

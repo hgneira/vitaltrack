@@ -2,12 +2,18 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { logAuditoria } from "@/lib/auditoria";
+
+const ROLES_PERMITIDOS = ["MEDICO", "ENFERMERIA"];
 
 // GET /api/expedientes?pacienteId=xxx
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const rol = (session.user as any).rol;
+    if (!ROLES_PERMITIDOS.includes(rol))
+      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
 
     const { searchParams } = new URL(request.url);
     const pacienteId = searchParams.get("pacienteId");
@@ -24,6 +30,17 @@ export async function GET(request: Request) {
       },
     });
 
+    if (expediente) {
+      await logAuditoria({
+        userId: (session.user as any).id,
+        accion: "ACCESO",
+        expedienteId: expediente.id,
+        pacienteId,
+        detalle: "Expediente consultado",
+        ip: request.headers.get("x-forwarded-for") ?? undefined,
+      });
+    }
+
     return NextResponse.json(expediente ?? null);
   } catch {
     return NextResponse.json({ error: "Error al obtener expediente" }, { status: 500 });
@@ -35,6 +52,9 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const rol = (session.user as any).rol;
+    if (!ROLES_PERMITIDOS.includes(rol))
+      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
 
     const body = await request.json();
     const medicoId = (session.user as any).id;
@@ -48,6 +68,14 @@ export async function POST(request: Request) {
         medico: { select: { nombre: true, apellidos: true } },
         notas: true,
       },
+    });
+
+    await logAuditoria({
+      userId: medicoId,
+      accion: "CREACION",
+      expedienteId: expediente.id,
+      pacienteId: body.pacienteId,
+      detalle: "Expediente clínico creado",
     });
 
     return NextResponse.json(expediente, { status: 201 });

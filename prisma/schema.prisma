@@ -52,9 +52,14 @@ model User {
   // Device actions (QR)
   accionesDispositivo AccionDispositivo[]
 
-  verificacionesHechas VerificacionAccesorios[] @relation("verificacionesHechas")
-  documentosSubidos    DocumentoEquipo[]        @relation("documentosSubidos")
-  guiasActualizadas    GuiaRapida[]             @relation("guiasActualizadas")
+  verificacionesHechas    VerificacionAccesorios[]    @relation("verificacionesHechas")
+  documentosSubidos       DocumentoEquipo[]           @relation("documentosSubidos")
+  guiasActualizadas       GuiaRapida[]                @relation("guiasActualizadas")
+  signosRegistrados       SignosVitales[]              @relation("signosRegistrados")
+  medicamentosIndicados   MedicamentoAdministrado[]   @relation("medicamentosIndicados")
+  interconsultasSolicitadas Interconsulta[]           @relation("interconsultasSolicitadas")
+  auditorias              AuditoriaExpediente[]
+  consentimientosRegistrados ConsentimientoInformado[] @relation("consentimientosRegistrados")
 
   @@map("usuarios")
 }
@@ -87,13 +92,16 @@ model Paciente {
   antecedentes       String?
   contactoEmergencia String?
   telefonoEmergencia String?
+  curp               String?
+  numeroExpediente   String?  @unique
   medicoId           String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  medico      User?        @relation(fields: [medicoId], references: [id])
-  citas       Cita[]
-  expedientes Expediente[]
+  medico          User?                    @relation(fields: [medicoId], references: [id])
+  citas           Cita[]
+  expedientes     Expediente[]
+  consentimiento  ConsentimientoInformado?
 
   @@map("pacientes")
 }
@@ -135,7 +143,11 @@ model Expediente {
   paciente   Paciente @relation(fields: [pacienteId], references: [id])
   medico     User     @relation(fields: [medicoId], references: [id])
 
-  notas NotaSOAP[]
+  notas              NotaSOAP[]
+  signosVitales      SignosVitales[]
+  medicamentos       MedicamentoAdministrado[]
+  interconsultas     Interconsulta[]
+  dispositivos       DispositivoUtilizado[]
 
   @@map("expedientes")
 }
@@ -174,13 +186,16 @@ model EquipoMedico {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  mantenimientos Mantenimiento[]
-  tareas         TareaMantenimiento[]
-  acciones       AccionDispositivo[]
-  accesorios     AccesorioEquipo[]
-  verificaciones VerificacionAccesorios[]
-  documentos     DocumentoEquipo[]
-  guiaRapida     GuiaRapida?
+  vidaUtilAnios  Int?         @default(10)
+
+  mantenimientos      Mantenimiento[]
+  tareas              TareaMantenimiento[]
+  acciones            AccionDispositivo[]
+  accesorios          AccesorioEquipo[]
+  verificaciones      VerificacionAccesorios[]
+  documentos          DocumentoEquipo[]
+  guiaRapida          GuiaRapida?
+  dispositivosUsados  DispositivoUtilizado[]
 
   @@map("equipos_medicos")
 }
@@ -546,4 +561,129 @@ model GuiaRapida {
   updatedBy   User?    @relation("guiasActualizadas", fields: [updatedById], references: [id])
 
   @@map("guias_rapidas")
+}
+
+// ==================== SIGNOS VITALES ====================
+
+model SignosVitales {
+  id                     String      @id @default(cuid())
+  expedienteId           String
+  turno                  TurnoSignos @default(MATUTINO)
+  fecha                  DateTime    @default(now())
+  temperatura            Float?
+  frecuenciaCardiaca     Int?
+  frecuenciaRespiratoria Int?
+  presionSistolica       Int?
+  presionDiastolica      Int?
+  spo2                   Float?
+  peso                   Float?
+  talla                  Float?
+  glucosa                Float?
+  registradoPorId        String
+
+  expediente    Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  registradoPor User       @relation("signosRegistrados", fields: [registradoPorId], references: [id])
+
+  @@map("signos_vitales")
+}
+
+enum TurnoSignos {
+  MATUTINO
+  VESPERTINO
+  NOCTURNO
+}
+
+// ==================== MEDICAMENTOS ADMINISTRADOS ====================
+
+model MedicamentoAdministrado {
+  id                String   @id @default(cuid())
+  expedienteId      String
+  medicamento       String
+  dosis             String?
+  via               String?
+  frecuencia        String?
+  indicadoPorNombre String?
+  indicadoPorId     String?
+  fecha             DateTime @default(now())
+
+  expediente  Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  indicadoPor User?      @relation("medicamentosIndicados", fields: [indicadoPorId], references: [id])
+
+  @@map("medicamentos_administrados")
+}
+
+// ==================== INTERCONSULTAS ====================
+
+model Interconsulta {
+  id             String   @id @default(cuid())
+  expedienteId   String
+  especialidad   String
+  motivo         String?
+  respuesta      String?
+  fecha          DateTime @default(now())
+  solicitadoPorId String?
+
+  expediente    Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  solicitadoPor User?      @relation("interconsultasSolicitadas", fields: [solicitadoPorId], references: [id])
+
+  @@map("interconsultas")
+}
+
+// ==================== DISPOSITIVOS UTILIZADOS ====================
+
+model DispositivoUtilizado {
+  id           String    @id @default(cuid())
+  expedienteId String
+  equipoId     String
+  inicio       DateTime  @default(now())
+  fin          DateTime?
+  notas        String?
+
+  expediente Expediente   @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  equipo     EquipoMedico @relation(fields: [equipoId], references: [id])
+
+  @@map("dispositivos_utilizados")
+}
+
+// ==================== AUDITORÍA DE EXPEDIENTE ====================
+
+model AuditoriaExpediente {
+  id           String        @id @default(cuid())
+  expedienteId String?
+  pacienteId   String?
+  userId       String
+  accion       TipoAuditoria
+  detalle      String?
+  ip           String?
+  createdAt    DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("auditoria_expedientes")
+}
+
+enum TipoAuditoria {
+  ACCESO
+  CREACION
+  MODIFICACION
+  ELIMINACION
+}
+
+// ==================== CONSENTIMIENTO INFORMADO ====================
+
+model ConsentimientoInformado {
+  id               String    @id @default(cuid())
+  pacienteId       String    @unique
+  aceptado         Boolean   @default(false)
+  fechaAceptacion  DateTime?
+  registradoPorId  String?
+  firmanteTipo     String?
+  firmanteNombre   String?
+  firmanteRelacion String?
+  createdAt        DateTime  @default(now())
+
+  paciente      Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  registradoPor User?    @relation("consentimientosRegistrados", fields: [registradoPorId], references: [id])
+
+  @@map("consentimientos_informados")
 }

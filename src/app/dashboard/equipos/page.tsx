@@ -16,6 +16,12 @@ const ESTADO_CFG: Record<string, { label: string; color: string; dot: string; ic
   FUERA_DE_SERVICIO: { label: "Fuera de servicio", color: "bg-red-100 text-red-600 ring-1 ring-red-200",             dot: "bg-red-500",    icon: AlertTriangle },
 };
 
+const RIESGO_CFG: Record<string, { label: string; color: string; dot: string }> = {
+  BAJO:     { label: "Bajo",     color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  MODERADO: { label: "Moderado", color: "bg-amber-100 text-amber-700",     dot: "bg-amber-500" },
+  ALTO:     { label: "Alto",     color: "bg-red-100 text-red-700",         dot: "bg-red-500" },
+};
+
 export default function InventarioGeneralPage() {
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,16 +29,25 @@ export default function InventarioGeneralPage() {
   const [filterEstado, setFilterEstado] = useState("TODOS");
   const [filterUbicacion, setFilterUbicacion] = useState("TODAS");
   const [openAreas, setOpenAreas] = useState<Record<string, boolean>>({});
+  const [riesgos, setRiesgos] = useState<Record<string, { nivel: string; score: number }>>({});
 
   const load = async () => {
     setLoading(true);
-    const data = await fetch("/api/equipos").then(r => r.json());
+    const [data, rdata] = await Promise.all([
+      fetch("/api/equipos").then(r => r.json()),
+      fetch("/api/equipos/riesgo").then(r => r.json()).catch(() => []),
+    ]);
     const list: Equipo[] = Array.isArray(data) ? data : [];
     setEquipos(list);
     const initial: Record<string, boolean> = {};
     const areas = [...new Set(list.map(e => e.ubicacion ?? "Sin área"))];
     areas.forEach((a, i) => { initial[a] = i === 0; });
     setOpenAreas(initial);
+    if (Array.isArray(rdata)) {
+      const map: Record<string, { nivel: string; score: number }> = {};
+      rdata.forEach((r: any) => { map[r.equipoId] = { nivel: r.nivel, score: r.score }; });
+      setRiesgos(map);
+    }
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -161,6 +176,7 @@ export default function InventarioGeneralPage() {
                           <th className="px-6 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase">Dispositivo</th>
                           <th className="px-6 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase">N° Serie</th>
                           <th className="px-6 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase">Estado</th>
+                          <th className="px-6 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase">Riesgo</th>
                           <th className="px-6 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase">Último mant.</th>
                           <th className="px-6 py-2.5" />
                         </tr>
@@ -186,6 +202,19 @@ export default function InventarioGeneralPage() {
                                 <span className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full w-fit ${cfg.color}`}>
                                   <Icon size={11} /> {cfg.label}
                                 </span>
+                              </td>
+                              <td className="px-6 py-3">
+                                {(() => {
+                                  const r = riesgos[eq.id];
+                                  if (!r) return <span className="text-xs text-slate-400">—</span>;
+                                  const rc = RIESGO_CFG[r.nivel];
+                                  return (
+                                    <span className={`flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${rc.color}`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${rc.dot}`} />
+                                      {rc.label}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="px-6 py-3 text-sm text-slate-500">
                                 {ultimo ? new Date(ultimo.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "Sin registro"}

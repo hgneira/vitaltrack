@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { logAuditoria } from "@/lib/auditoria";
+
+const ROLES_PERMITIDOS = ["MEDICO", "ENFERMERIA"];
 
 export async function PATCH(
   request: Request,
@@ -10,8 +13,11 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const rol = (session.user as any).rol;
+    if (!ROLES_PERMITIDOS.includes(rol))
+      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
 
-    const { notaId } = await params;
+    const { id, notaId } = await params;
     const body = await request.json();
 
     const nota = await prisma.notaSOAP.update({
@@ -25,10 +31,10 @@ export async function PATCH(
         tratamiento: body.tratamiento || null,
         evolucion: body.evolucion || null,
       },
-      include: {
-        creadoPor: { select: { nombre: true, apellidos: true } },
-      },
+      include: { creadoPor: { select: { nombre: true, apellidos: true } } },
     });
+
+    await logAuditoria({ userId: (session.user as any).id, accion: "MODIFICACION", expedienteId: id, detalle: `Nota SOAP modificada: ${notaId}` });
 
     return NextResponse.json(nota);
   } catch {
@@ -43,9 +49,15 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const rol = (session.user as any).rol;
+    if (!ROLES_PERMITIDOS.includes(rol))
+      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
 
-    const { notaId } = await params;
+    const { id, notaId } = await params;
     await prisma.notaSOAP.delete({ where: { id: notaId } });
+
+    await logAuditoria({ userId: (session.user as any).id, accion: "ELIMINACION", expedienteId: id, detalle: `Nota SOAP eliminada: ${notaId}` });
+
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Error al eliminar nota" }, { status: 500 });

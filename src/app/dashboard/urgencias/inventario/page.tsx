@@ -234,7 +234,7 @@ function MantModal({ equipo, onClose, onSaved }: { equipo: Equipo; onClose: () =
   );
 }
 
-function EquipoRow({ eq, onEdit, onQR, onMant, onStatusChange }: { eq: Equipo; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; onMant: (eq: Equipo) => void; onStatusChange: (id: string, s: string) => void }) {
+function EquipoRow({ eq, riesgo, onEdit, onQR, onMant, onStatusChange }: { eq: Equipo; riesgo?: { nivel: string; score: number }; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; onMant: (eq: Equipo) => void; onStatusChange: (id: string, s: string) => void }) {
   const cfg = ESTADO_CFG[eq.estado] ?? { label: eq.estado, color: "bg-slate-100 text-slate-600", dot: "bg-slate-400", icon: Activity };
   const ultimo = eq.mantenimientos[eq.mantenimientos.length - 1];
   return (
@@ -251,6 +251,17 @@ function EquipoRow({ eq, onEdit, onQR, onMant, onStatusChange }: { eq: Equipo; o
       <td className="px-6 py-4 text-sm text-slate-600 font-mono">{eq.numeroSerie || "—"}</td>
       <td className="px-6 py-4">
         <StatusBadge estado={eq.estado} onChange={(s) => onStatusChange(eq.id, s)} />
+      </td>
+      <td className="px-6 py-4">
+        {riesgo ? (() => {
+          const rc = RIESGO_CFG[riesgo.nivel];
+          return (
+            <span className={`flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${rc.color}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${rc.dot}`} />
+              {rc.label}
+            </span>
+          );
+        })() : <span className="text-xs text-slate-400">—</span>}
       </td>
       <td className="px-6 py-4 text-sm text-slate-500">
         {ultimo ? new Date(ultimo.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "Sin registro"}
@@ -275,7 +286,7 @@ function EquipoRow({ eq, onEdit, onQR, onMant, onStatusChange }: { eq: Equipo; o
   );
 }
 
-function AreaGroup({ area, equipos, onEdit, onQR, onMant, onStatusChange, defaultOpen }: { area: string; equipos: Equipo[]; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; onMant: (eq: Equipo) => void; onStatusChange: (id: string, s: string) => void; defaultOpen: boolean }) {
+function AreaGroup({ area, equipos, riesgos, onEdit, onQR, onMant, onStatusChange, defaultOpen }: { area: string; equipos: Equipo[]; riesgos: Record<string, { nivel: string; score: number }>; onEdit: (eq: Equipo) => void; onQR: (eq: Equipo) => void; onMant: (eq: Equipo) => void; onStatusChange: (id: string, s: string) => void; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const activos = equipos.filter((e) => e.estado === "ACTIVO").length;
   const enMant  = equipos.filter((e) => e.estado === "EN_MANTENIMIENTO").length;
@@ -306,18 +317,25 @@ function AreaGroup({ area, equipos, onEdit, onQR, onMant, onStatusChange, defaul
               <th className="px-6 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Dispositivo</th>
               <th className="px-6 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">N° Serie</th>
               <th className="px-6 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Estado</th>
+              <th className="px-6 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Riesgo</th>
               <th className="px-6 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Último mantenimiento</th>
               <th className="px-6 py-2.5" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {equipos.map((eq) => <EquipoRow key={eq.id} eq={eq} onEdit={onEdit} onQR={onQR} onMant={onMant} onStatusChange={onStatusChange} />)}
+            {equipos.map((eq) => <EquipoRow key={eq.id} eq={eq} riesgo={riesgos[eq.id]} onEdit={onEdit} onQR={onQR} onMant={onMant} onStatusChange={onStatusChange} />)}
           </tbody>
         </table>
       )}
     </div>
   );
 }
+
+const RIESGO_CFG: Record<string, { label: string; color: string; dot: string }> = {
+  BAJO:     { label: "Bajo",     color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  MODERADO: { label: "Moderado", color: "bg-amber-100 text-amber-700",     dot: "bg-amber-500" },
+  ALTO:     { label: "Alto",     color: "bg-red-100 text-red-700",         dot: "bg-red-500" },
+};
 
 export default function InventarioPage() {
   const [equipos, setEquipos]             = useState<Equipo[]>([]);
@@ -326,6 +344,7 @@ export default function InventarioPage() {
   const [filterEstado, setFilterEstado]   = useState("TODOS");
   const [filterUbicacion, setFilterUbicacion] = useState("TODAS");
   const [viewMode, setViewMode]           = useState<"areas" | "lista">("areas");
+  const [riesgos, setRiesgos]             = useState<Record<string, { nivel: string; score: number }>>({});
 
   // Modals
   const [showNew, setShowNew]     = useState(false);
@@ -338,8 +357,16 @@ export default function InventarioPage() {
 
   const load = async () => {
     setLoading(true);
-    const data = await fetch("/api/equipos").then((r) => r.json());
+    const [data, rdata] = await Promise.all([
+      fetch("/api/equipos").then((r) => r.json()),
+      fetch("/api/equipos/riesgo").then((r) => r.json()).catch(() => []),
+    ]);
     setEquipos(Array.isArray(data) ? data : []);
+    if (Array.isArray(rdata)) {
+      const map: Record<string, { nivel: string; score: number }> = {};
+      rdata.forEach((r: any) => { map[r.equipoId] = { nivel: r.nivel, score: r.score }; });
+      setRiesgos(map);
+    }
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -510,7 +537,7 @@ export default function InventarioPage() {
           /* ── Vista por área ── */
           <div>
             {byArea.map(([area, eqs], idx) => (
-              <AreaGroup key={area} area={area} equipos={eqs} onEdit={openEdit} onQR={setQrEquipo} onMant={setMantEquipo} onStatusChange={handleStatusChange} defaultOpen={idx === 0 || isFiltering as boolean} />
+              <AreaGroup key={area} area={area} equipos={eqs} riesgos={riesgos} onEdit={openEdit} onQR={setQrEquipo} onMant={setMantEquipo} onStatusChange={handleStatusChange} defaultOpen={idx === 0 || isFiltering as boolean} />
             ))}
           </div>
         ) : (
@@ -523,6 +550,7 @@ export default function InventarioPage() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">N° Serie</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Área</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Riesgo</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Último mantenimiento</th>
                   <th className="px-6 py-3" />
                 </tr>
@@ -550,6 +578,19 @@ export default function InventarioPage() {
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge estado={eq.estado} onChange={(s) => handleStatusChange(eq.id, s)} />
+                      </td>
+                      <td className="px-6 py-4">
+                        {(() => {
+                          const r = riesgos[eq.id];
+                          if (!r) return <span className="text-xs text-slate-400">—</span>;
+                          const rc = RIESGO_CFG[r.nivel];
+                          return (
+                            <span className={`flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${rc.color}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${rc.dot}`} />
+                              {rc.label}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
                         {ultimo ? new Date(ultimo.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "Sin registro"}

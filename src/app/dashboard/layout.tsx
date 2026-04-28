@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import NotificationBell from "./_components/NotificationBell";
 import Clock from "./_components/Clock";
+import SessionTimeout from "./_components/SessionTimeout";
 
 // Navigation items per role
 const ALL_NAV = [
@@ -320,6 +321,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Clock />
           <NotificationBell />
         </div>
+        <SessionTimeout />
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
