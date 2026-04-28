@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import {
   Activity, MapPin, CheckCircle, Wrench, AlertTriangle,
   ArrowLeft, Package, ArrowRightLeft, RotateCcw, Flag,
-  User, Clock, ChevronDown, Loader2,
+  User, Clock, ChevronDown, Loader2, BookOpen,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -27,10 +27,10 @@ const ESTADO_CFG: Record<string, { label: string; color: string; bg: string; ico
 };
 
 const ACCION_CFG: Record<string, { label: string; icon: React.ElementType; color: string; bg: string; border: string }> = {
-  TOMAR:             { label: "Tomó el equipo",       icon: Package,          color: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-200" },
-  MOVER:             { label: "Movió de área",         icon: ArrowRightLeft,   color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200" },
-  DEVOLVER:          { label: "Devolvió el equipo",    icon: RotateCcw,        color: "text-emerald-700",bg: "bg-emerald-50",border: "border-emerald-200" },
-  REPORTAR_PROBLEMA: { label: "Reportó un problema",   icon: Flag,             color: "text-red-700",    bg: "bg-red-50",    border: "border-red-200" },
+  TOMAR:             { label: "Tomó el equipo",     icon: Package,        color: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-200" },
+  MOVER:             { label: "Movió de área",       icon: ArrowRightLeft, color: "text-violet-700",  bg: "bg-violet-50",  border: "border-violet-200" },
+  DEVOLVER:          { label: "Devolvió el equipo",  icon: RotateCcw,      color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
+  REPORTAR_PROBLEMA: { label: "Reportó un problema", icon: Flag,           color: "text-red-700",     bg: "bg-red-50",     border: "border-red-200" },
 };
 
 const ROL_LABELS: Record<string, string> = {
@@ -43,26 +43,32 @@ const ROL_LABELS: Record<string, string> = {
 type ActionType = "TOMAR" | "MOVER" | "DEVOLVER" | "REPORTAR_PROBLEMA";
 
 const ACCIONES: { tipo: ActionType; label: string; desc: string; icon: React.ElementType; color: string; nuevoEstado?: string }[] = [
-  { tipo: "TOMAR",             label: "Tomar equipo",    desc: "Registrar que estás usando este dispositivo",      icon: Package,        color: "bg-blue-600 hover:bg-blue-700" },
-  { tipo: "MOVER",             label: "Mover de área",   desc: "Cambiar la ubicación del dispositivo",             icon: ArrowRightLeft, color: "bg-violet-600 hover:bg-violet-700" },
-  { tipo: "DEVOLVER",          label: "Devolver",        desc: "El dispositivo regresa a su lugar",                icon: RotateCcw,      color: "bg-emerald-600 hover:bg-emerald-700" },
-  { tipo: "REPORTAR_PROBLEMA", label: "Reportar problema", desc: "Informar un fallo o incidencia",                 icon: Flag,           color: "bg-red-600 hover:bg-red-700", nuevoEstado: "FUERA_DE_SERVICIO" },
+  { tipo: "TOMAR",             label: "Tomar equipo",      desc: "Registrar que estás usando este dispositivo", icon: Package,        color: "bg-blue-600 hover:bg-blue-700" },
+  { tipo: "MOVER",             label: "Mover de área",     desc: "Cambiar la ubicación del dispositivo",        icon: ArrowRightLeft, color: "bg-violet-600 hover:bg-violet-700" },
+  { tipo: "DEVOLVER",          label: "Devolver",          desc: "El dispositivo regresa a su lugar",           icon: RotateCcw,      color: "bg-emerald-600 hover:bg-emerald-700" },
+  { tipo: "REPORTAR_PROBLEMA", label: "Reportar problema", desc: "Informar un fallo o incidencia",              icon: Flag,           color: "bg-red-600 hover:bg-red-700", nuevoEstado: "FUERA_DE_SERVICIO" },
 ];
 
 export default function DispositivoPage() {
   const { id } = useParams<{ id: string }>();
-  const [equipo, setEquipo] = useState<Equipo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [accionActiva, setAccionActiva] = useState<ActionType | null>(null);
-  const [area, setArea] = useState("");
-  const [notas, setNotas] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [equipo, setEquipo]           = useState<Equipo | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [guia, setGuia]               = useState<string[]>([]);
+  const [showGuia, setShowGuia]       = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  const [accionActiva, setAccionActiva] = useState<ActionType | null>(null);
+  const [area, setArea]       = useState("");
+  const [notas, setNotas]     = useState("");
+  const [saving, setSaving]   = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const load = async () => {
-    const data = await fetch(`/api/dispositivo/${id}`).then((r) => r.json());
+    const [data, guiaData] = await Promise.all([
+      fetch(`/api/dispositivo/${id}`).then((r) => r.json()),
+      fetch(`/api/equipos/${id}/guia`).then((r) => r.json()).catch(() => ({ pasos: [] })),
+    ]);
     setEquipo(data.error ? null : data);
+    setGuia(Array.isArray(guiaData.pasos) ? guiaData.pasos : []);
     setLoading(false);
   };
   useEffect(() => { load(); }, [id]);
@@ -91,17 +97,10 @@ export default function DispositivoPage() {
   };
 
   const openAccion = (tipo: ActionType) => {
-    setAccionActiva(tipo);
-    setArea("");
-    setNotas("");
-    setSaveError("");
+    setAccionActiva(tipo); setArea(""); setNotas(""); setSaveError("");
   };
-
   const closeSheet = () => {
-    setAccionActiva(null);
-    setArea("");
-    setNotas("");
-    setSaveError("");
+    setAccionActiva(null); setArea(""); setNotas(""); setSaveError("");
   };
 
   if (loading) return (
@@ -121,7 +120,6 @@ export default function DispositivoPage() {
   const estadoCfg = ESTADO_CFG[equipo.estado] ?? ESTADO_CFG.ACTIVO;
   const EstadoIcon = estadoCfg.icon;
   const accionDef = accionActiva ? ACCIONES.find((a) => a.tipo === accionActiva) : null;
-
   const confirmDisabled =
     saving ||
     (accionActiva === "MOVER" && !area.trim()) ||
@@ -146,6 +144,7 @@ export default function DispositivoPage() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 pt-5 space-y-4">
+
         {/* Device info card */}
         <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-5">
           <div className="flex items-start gap-4">
@@ -162,20 +161,47 @@ export default function DispositivoPage() {
               )}
             </div>
           </div>
-
           {equipo.ubicacion && (
             <div className="mt-4 flex items-center gap-2 text-sm text-slate-600 bg-slate-50 rounded-xl px-4 py-3">
               <MapPin size={14} className="text-slate-400 shrink-0" />
               <span>{equipo.ubicacion}</span>
             </div>
           )}
-
           {equipo.descripcion && (
             <p className="mt-3 text-xs text-slate-400 leading-relaxed">{equipo.descripcion}</p>
           )}
         </div>
 
-        {/* Action buttons */}
+        {/* ── Guía rápida ── */}
+        {guia.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
+            <button
+              onClick={() => setShowGuia((v) => !v)}
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <BookOpen size={15} className="text-cyan-500" />
+                Guía rápida de uso
+              </span>
+              <ChevronDown size={15} className={`text-slate-400 transition-transform ${showGuia ? "rotate-180" : ""}`} />
+            </button>
+
+            {showGuia && (
+              <div className="border-t border-slate-100 px-5 py-4 space-y-3">
+                {guia.map((paso, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-cyan-100 text-cyan-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
+                    <p className="text-sm text-slate-700 leading-snug">{paso}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Action buttons ── */}
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-1">Registrar acción</p>
           <div className="grid grid-cols-2 gap-3">
@@ -196,10 +222,12 @@ export default function DispositivoPage() {
           </div>
         </div>
 
-        {/* History */}
+        {/* ── History ── */}
         <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
-          <button onClick={() => setShowHistory((v) => !v)}
-            className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+          <button
+            onClick={() => setShowHistory((v) => !v)}
+            className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          >
             <span className="flex items-center gap-2">
               <Clock size={15} className="text-slate-400" />
               Historial de acciones
@@ -254,34 +282,24 @@ export default function DispositivoPage() {
         </div>
       </div>
 
-      {/* Bottom sheet confirmation modal */}
+      {/* ── Bottom sheet ── */}
       {accionActiva && (
         <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
-            onClick={closeSheet}
-          />
-
-          {/* Sheet */}
+          <div className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm" onClick={closeSheet} />
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-8 max-w-lg mx-auto">
-            {/* Drag handle */}
             <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
 
-            {/* Title */}
             <div className="flex items-center gap-3 mb-5">
               {accionDef && (
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                   accionDef.tipo === "TOMAR" ? "bg-blue-100" :
                   accionDef.tipo === "MOVER" ? "bg-violet-100" :
-                  accionDef.tipo === "DEVOLVER" ? "bg-emerald-100" :
-                  "bg-red-100"
+                  accionDef.tipo === "DEVOLVER" ? "bg-emerald-100" : "bg-red-100"
                 }`}>
                   <accionDef.icon size={18} className={
                     accionDef.tipo === "TOMAR" ? "text-blue-600" :
                     accionDef.tipo === "MOVER" ? "text-violet-600" :
-                    accionDef.tipo === "DEVOLVER" ? "text-emerald-600" :
-                    "text-red-600"
+                    accionDef.tipo === "DEVOLVER" ? "text-emerald-600" : "text-red-600"
                   } />
                 </div>
               )}
@@ -291,59 +309,23 @@ export default function DispositivoPage() {
               </div>
             </div>
 
-            {/* Fields */}
             {accionActiva === "MOVER" && (
               <div className="mb-4">
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Nueva área / ubicación *</label>
-                <input
-                  value={area}
-                  onChange={(e) => setArea(e.target.value)}
-                  placeholder="Ej. Sala de Choque"
-                  autoFocus
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                />
+                <input value={area} onChange={(e) => setArea(e.target.value)} placeholder="Ej. Sala de Choque" autoFocus
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
               </div>
             )}
 
-            {(accionActiva === "REPORTAR_PROBLEMA" || accionActiva === "MOVER") && (
+            {(accionActiva === "REPORTAR_PROBLEMA" || accionActiva === "MOVER" || accionActiva === "TOMAR" || accionActiva === "DEVOLVER") && (
               <div className="mb-4">
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
                   {accionActiva === "REPORTAR_PROBLEMA" ? "Descripción del problema *" : "Notas (opcional)"}
                 </label>
-                <textarea
-                  value={notas}
-                  onChange={(e) => setNotas(e.target.value)}
-                  rows={3}
+                <textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={3}
                   autoFocus={accionActiva === "REPORTAR_PROBLEMA"}
                   placeholder={accionActiva === "REPORTAR_PROBLEMA" ? "Describe el problema encontrado…" : "Notas adicionales…"}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
-                />
-              </div>
-            )}
-
-            {accionActiva === "TOMAR" && (
-              <div className="mb-4">
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Notas (opcional)</label>
-                <textarea
-                  value={notas}
-                  onChange={(e) => setNotas(e.target.value)}
-                  rows={2}
-                  placeholder="Notas adicionales…"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
-                />
-              </div>
-            )}
-
-            {accionActiva === "DEVOLVER" && (
-              <div className="mb-4">
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Notas (opcional)</label>
-                <textarea
-                  value={notas}
-                  onChange={(e) => setNotas(e.target.value)}
-                  rows={2}
-                  placeholder="Notas adicionales…"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
-                />
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none" />
               </div>
             )}
 
@@ -351,21 +333,12 @@ export default function DispositivoPage() {
               <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-4">{saveError}</p>
             )}
 
-            {/* Actions */}
             <div className="flex gap-3">
-              <button
-                onClick={handleAccion}
-                disabled={confirmDisabled}
-                className={`flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 ${
-                  accionDef?.color ?? "bg-slate-600"
-                }`}
-              >
+              <button onClick={handleAccion} disabled={confirmDisabled}
+                className={`flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 ${accionDef?.color ?? "bg-slate-600"}`}>
                 {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Confirmar"}
               </button>
-              <button
-                onClick={closeSheet}
-                className="px-5 py-3.5 rounded-xl text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 font-medium"
-              >
+              <button onClick={closeSheet} className="px-5 py-3.5 rounded-xl text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 font-medium">
                 Cancelar
               </button>
             </div>
