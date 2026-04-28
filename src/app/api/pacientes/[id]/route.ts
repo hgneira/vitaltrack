@@ -5,8 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { encryptField, decryptField } from "@/lib/crypto";
 import { logAuditoria } from "@/lib/auditoria";
 
-const ROLES_LECTURA = ["MEDICO", "ENFERMERIA", "RECEPCION", "ADMINISTRADOR"];
-const ROLES_ESCRITURA = ["MEDICO", "RECEPCION", "ADMINISTRADOR"];
+const ROLES_LECTURA = ["MEDICO", "ENFERMERIA", "RECEPCION", "ADMINISTRADOR", "URGENCIAS"];
+const ROLES_ESCRITURA = ["MEDICO", "RECEPCION", "ADMINISTRADOR", "URGENCIAS"];
 
 export async function GET(
   request: Request,

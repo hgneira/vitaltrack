@@ -6,7 +6,7 @@ import { encryptField } from "@/lib/crypto";
 import { logAuditoria } from "@/lib/auditoria";
 
 // Only medical staff can access patient records
-const ROLES_PACIENTES = ["MEDICO", "ENFERMERIA", "RECEPCION", "ADMINISTRADOR"];
+const ROLES_PACIENTES = ["MEDICO", "ENFERMERIA", "RECEPCION", "ADMINISTRADOR", "URGENCIAS"];
 
 function generarNumeroExpediente(): string {
   const now = new Date();

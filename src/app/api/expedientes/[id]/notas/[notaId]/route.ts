@@ -4,7 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { logAuditoria } from "@/lib/auditoria";
 
-const ROLES_PERMITIDOS = ["MEDICO", "ENFERMERIA"];
+const ROLES_PERMITIDOS = ["MEDICO", "ENFERMERIA", "URGENCIAS"];
 
 export async function PATCH(
   request: Request,
