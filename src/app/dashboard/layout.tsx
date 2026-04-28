@@ -41,7 +41,7 @@ const ALL_NAV = [
     items: [
       { href: "/dashboard/admin/medicos", label: "Directorio Médico", icon: Stethoscope,  roles: ["ADMINISTRADOR"] },
       { href: "/dashboard/pacientes",     label: "Pacientes",         icon: Users,        roles: ["MEDICO", "ENFERMERIA", "RECEPCION", "URGENCIAS"] },
-      { href: "/dashboard/citas",         label: "Citas",             icon: CalendarDays, roles: ["MEDICO", "ENFERMERIA", "RECEPCION", "URGENCIAS"] },
+      { href: "/dashboard/citas",         label: "Citas",             icon: CalendarDays, roles: ["MEDICO", "ENFERMERIA", "RECEPCION"] },
     ],
   },
   {
