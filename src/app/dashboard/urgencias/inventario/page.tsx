@@ -670,6 +670,20 @@ export default function InventarioPage() {
                   <label className="block text-xs font-medium text-slate-700 mb-1">Área / Ubicación</label>
                   <input value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} className={inputCls} placeholder="Sala de Choque" list="ubicaciones-list" />
                   <datalist id="ubicaciones-list">
+                    <option value="Sala de Choque" />
+                    <option value="Cubículo 1" />
+                    <option value="Cubículo 2" />
+                    <option value="Cubículo 3" />
+                    <option value="Cubículo 4" />
+                    <option value="Cubículo 5" />
+                    <option value="Cubículo 6" />
+                    <option value="Cubículo 7" />
+                    <option value="Cubículo 8" />
+                    <option value="Observación" />
+                    <option value="Estación Enfermería" />
+                    <option value="Rayos X" />
+                    <option value="Triaje" />
+                    <option value="Sala de Espera" />
                     {ubicaciones.map((u) => <option key={u} value={u} />)}
                   </datalist>
                 </div>
