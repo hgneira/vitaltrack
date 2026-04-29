@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, CalendarDays, Stethoscope,
   SprayCan, Pill, UserCog, LogOut, ChevronRight, Bell, ClipboardList, UserCircle,
   Activity, Wrench, BarChart2, FileText, Menu, X, PanelLeftClose, PanelLeftOpen,
-  Building2,
+  Building2, Map,
 } from "lucide-react";
 import NotificationBell from "./_components/NotificationBell";
 import Clock from "./_components/Clock";
@@ -70,6 +70,7 @@ const ALL_NAV = [
     section: "Urgencias",
     items: [
       { href: "/dashboard/urgencias/inventario",    label: "Inventario",       icon: Activity,  roles: ["ADMINISTRADOR", "URGENCIAS"] },
+      { href: "/dashboard/urgencias/mapa",          label: "Mapa",             icon: Map,       roles: ["ADMINISTRADOR", "URGENCIAS"] },
       { href: "/dashboard/urgencias/mantenimiento", label: "Mantenimiento",    icon: Wrench,    roles: ["ADMINISTRADOR", "URGENCIAS"] },
       { href: "/dashboard/urgencias/kpis",          label: "Indicadores KPI",  icon: BarChart2, roles: ["ADMINISTRADOR", "URGENCIAS"] },
       { href: "/dashboard/urgencias/reportes",      label: "Reportes",         icon: FileText,  roles: ["ADMINISTRADOR", "URGENCIAS"] },
