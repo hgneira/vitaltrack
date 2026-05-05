@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import {
   UserCog, Plus, Search, Check, X, Pencil, Trash2, AlertTriangle,
   Stethoscope, HeartPulse, FlaskConical, SprayCan, Pill, Phone,
-  Wrench, ShieldCheck, Users, ConciergeBell, Activity,
+  Wrench, ShieldCheck, Users, ConciergeBell, Activity, DatabaseZap,
 } from "lucide-react";
 
 interface Usuario {
@@ -66,6 +66,17 @@ export default function UsuariosPage() {
   const [deleteTarget, setDeleteTarget] = useState<Usuario | null>(null);
   const [deleteError, setDeleteError]   = useState("");
   const [deleting, setDeleting]         = useState(false);
+  const [seeding, setSeeding]           = useState(false);
+  const [seedResult, setSeedResult]     = useState<string | null>(null);
+
+  const runSeed = async () => {
+    if (!confirm("¿Seguro? Esto borrará TODOS los dispositivos y áreas actuales y los reemplazará con los datos HGZ reales.")) return;
+    setSeeding(true); setSeedResult(null);
+    const res = await fetch("/api/seed/completo", { method: "POST" });
+    const d = await res.json();
+    setSeedResult(res.ok ? `✓ ${d.areas} áreas y ${d.equipos} dispositivos creados` : `Error: ${d.error}`);
+    setSeeding(false);
+  };
 
   const load = async () => {
     const data = await fetch("/api/usuarios").then(r => r.json());
@@ -147,9 +158,20 @@ export default function UsuariosPage() {
             </span>
           )}
         </div>
-        <button onClick={openNew} className="flex items-center gap-2 bg-cyan-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors">
-          <Plus size={15} /> Nuevo usuario
-        </button>
+        <div className="flex items-center gap-3">
+          {seedResult && (
+            <span className={`text-xs font-medium px-3 py-1.5 rounded-lg ${seedResult.startsWith("✓") ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+              {seedResult}
+            </span>
+          )}
+          <button onClick={runSeed} disabled={seeding}
+            className="flex items-center gap-2 border border-orange-300 text-orange-700 bg-orange-50 hover:bg-orange-100 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
+            <DatabaseZap size={14} /> {seeding ? "Cargando datos…" : "Resetear áreas y dispositivos"}
+          </button>
+          <button onClick={openNew} className="flex items-center gap-2 bg-cyan-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors">
+            <Plus size={15} /> Nuevo usuario
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto p-8">
