@@ -345,6 +345,7 @@ export default function InventarioPage() {
   const [filterUbicacion, setFilterUbicacion] = useState("TODAS");
   const [viewMode, setViewMode]           = useState<"areas" | "lista">("areas");
   const [riesgos, setRiesgos]             = useState<Record<string, { nivel: string; score: number }>>({});
+  const [catalogoAreas, setCatalogoAreas] = useState<{ nombre: string; categoria: string }[]>([]);
 
   // Modals
   const [showNew, setShowNew]     = useState(false);
@@ -369,7 +370,13 @@ export default function InventarioPage() {
     }
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    fetch("/api/areas?simple=1")
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setCatalogoAreas(d); })
+      .catch(() => {});
+  }, []);
 
   const ubicaciones = useMemo(() => {
     const s = new Set<string>();
@@ -514,7 +521,7 @@ export default function InventarioPage() {
           <select value={filterUbicacion} onChange={(e) => setFilterUbicacion(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
             <option value="TODAS">Todas las áreas</option>
-            {ubicaciones.map((u) => <option key={u} value={u}>{u}</option>)}
+            {[...new Set([...catalogoAreas.map(a => a.nombre), ...ubicaciones])].sort().map((u) => <option key={u} value={u}>{u}</option>)}
           </select>
           {isFiltering && (
             <button onClick={() => { setSearch(""); setFilterEstado("TODOS"); setFilterUbicacion("TODAS"); }} className="text-sm text-red-600 hover:text-red-800 font-medium">
@@ -670,21 +677,8 @@ export default function InventarioPage() {
                   <label className="block text-xs font-medium text-slate-700 mb-1">Área / Ubicación</label>
                   <input value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} className={inputCls} placeholder="Sala de Choque" list="ubicaciones-list" />
                   <datalist id="ubicaciones-list">
-                    <option value="Sala de Choque" />
-                    <option value="Cubículo 1" />
-                    <option value="Cubículo 2" />
-                    <option value="Cubículo 3" />
-                    <option value="Cubículo 4" />
-                    <option value="Cubículo 5" />
-                    <option value="Cubículo 6" />
-                    <option value="Cubículo 7" />
-                    <option value="Cubículo 8" />
-                    <option value="Observación" />
-                    <option value="Estación Enfermería" />
-                    <option value="Rayos X" />
-                    <option value="Triaje" />
-                    <option value="Sala de Espera" />
-                    {ubicaciones.map((u) => <option key={u} value={u} />)}
+                    {catalogoAreas.map((a) => <option key={a.nombre} value={a.nombre} />)}
+                    {ubicaciones.filter(u => !catalogoAreas.some(a => a.nombre === u)).map((u) => <option key={u} value={u} />)}
                   </datalist>
                 </div>
                 <div>

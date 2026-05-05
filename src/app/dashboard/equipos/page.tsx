@@ -30,6 +30,7 @@ export default function InventarioGeneralPage() {
   const [filterUbicacion, setFilterUbicacion] = useState("TODAS");
   const [openAreas, setOpenAreas] = useState<Record<string, boolean>>({});
   const [riesgos, setRiesgos] = useState<Record<string, { nivel: string; score: number }>>({});
+  const [catalogoAreas, setCatalogoAreas] = useState<{ nombre: string }[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -50,7 +51,13 @@ export default function InventarioGeneralPage() {
     }
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    fetch("/api/areas?simple=1")
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setCatalogoAreas(d); })
+      .catch(() => {});
+  }, []);
 
   const ubicaciones = useMemo(() => {
     const s = new Set<string>();
@@ -134,7 +141,7 @@ export default function InventarioGeneralPage() {
           <select value={filterUbicacion} onChange={e => setFilterUbicacion(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-400">
             <option value="TODAS">Todas las áreas</option>
-            {ubicaciones.map(u => <option key={u} value={u}>{u}</option>)}
+            {[...new Set([...catalogoAreas.map(a => a.nombre), ...ubicaciones])].sort().map(u => <option key={u} value={u}>{u}</option>)}
           </select>
           {(search || filterEstado !== "TODOS" || filterUbicacion !== "TODAS") && (
             <button onClick={() => { setSearch(""); setFilterEstado("TODOS"); setFilterUbicacion("TODAS"); }} className="text-sm text-slate-500 hover:text-slate-800 font-medium">Limpiar</button>

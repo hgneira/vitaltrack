@@ -3,13 +3,22 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-const ALLOWED = ["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"];
-
-export async function GET() {
+// All authenticated users can fetch the area catalog
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !ALLOWED.includes((session.user as any).rol)) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const simple = searchParams.get("simple") === "1";
+
+    if (simple) {
+      const areas = await prisma.areaHospital.findMany({
+        where: { activo: true },
+        select: { id: true, nombre: true, categoria: true, capacidad: true },
+        orderBy: [{ categoria: "asc" }, { nombre: "asc" }],
+      });
+      return NextResponse.json(areas);
     }
 
     const areas = await prisma.areaHospital.findMany({
@@ -22,7 +31,7 @@ export async function GET() {
         },
         _count: { select: { alertas: true, registros: true } },
       },
-      orderBy: [{ piso: "asc" }, { nombre: "asc" }],
+      orderBy: [{ categoria: "asc" }, { nombre: "asc" }],
     });
     return NextResponse.json(areas);
   } catch {
@@ -36,14 +45,15 @@ export async function POST(request: Request) {
     if (!session || (session.user as any).rol !== "ADMINISTRADOR") {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
-
     const body = await request.json();
     const area = await prisma.areaHospital.create({
       data: {
-        nombre: body.nombre,
+        nombre:    body.nombre,
         descripcion: body.descripcion ?? null,
-        piso: body.piso ?? null,
-        tipo: body.tipo ?? "OTRO",
+        piso:      body.piso ?? null,
+        categoria: body.categoria ?? null,
+        capacidad: body.capacidad ?? null,
+        tipo:      body.tipo ?? "OTRO",
       },
     });
     return NextResponse.json(area, { status: 201 });

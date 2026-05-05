@@ -300,6 +300,8 @@ model AreaHospital {
   descripcion String?
   piso        String?
   tipo        TipoArea @default(OTRO)
+  categoria   String?
+  capacidad   String?
   activo      Boolean  @default(true)
   createdAt   DateTime @default(now())
 
