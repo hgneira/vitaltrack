@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import {
   Activity, Search, CheckCircle, Wrench, AlertTriangle,
   MapPin, Filter, X, RefreshCw, Plus, Pencil, ChevronDown, ChevronRight, LayoutList, Layers, QrCode,
-  ClipboardList, Clock, ChevronUp, ExternalLink,
+  ClipboardList, Clock, ChevronUp, ExternalLink, DatabaseZap,
 } from "lucide-react";
 import Link from "next/link";
 import QRModal from "./QRModal";
@@ -355,6 +355,8 @@ export default function InventarioPage() {
   const [form, setForm]           = useState(emptyForm);
   const [saving, setSaving]       = useState(false);
   const [formError, setFormError] = useState("");
+  const [seeding, setSeeding]     = useState(false);
+  const [seedMsg, setSeedMsg]     = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -409,6 +411,16 @@ export default function InventarioPage() {
     activos: equipos.filter((e) => e.estado === "ACTIVO").length,
     enMant: equipos.filter((e) => e.estado === "EN_MANTENIMIENTO").length,
     fuera: equipos.filter((e) => e.estado === "FUERA_DE_SERVICIO").length,
+  };
+
+  const runSeed = async () => {
+    if (!confirm("¿Resetear TODAS las áreas y dispositivos con los datos HGZ reales? Se borrarán los actuales.")) return;
+    setSeeding(true); setSeedMsg(null);
+    const res = await fetch("/api/seed/completo", { method: "POST" });
+    const d = await res.json();
+    if (res.ok) { setSeedMsg(`✓ ${d.areas} áreas y ${d.equipos} dispositivos cargados`); await load(); }
+    else setSeedMsg(`Error: ${d.error}`);
+    setSeeding(false);
   };
 
   const openNew = () => { setForm(emptyForm); setFormError(""); setShowNew(true); };
@@ -475,6 +487,15 @@ export default function InventarioPage() {
               <LayoutList size={13} /> Lista
             </button>
           </div>
+          {seedMsg && (
+            <span className={`text-xs font-medium px-3 py-1.5 rounded-lg ${seedMsg.startsWith("✓") ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+              {seedMsg}
+            </span>
+          )}
+          <button onClick={runSeed} disabled={seeding}
+            className="flex items-center gap-1.5 text-sm font-medium border border-orange-300 text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg px-3 py-2 disabled:opacity-50 transition-colors">
+            <DatabaseZap size={13} /> {seeding ? "Cargando…" : "Cargar datos HGZ"}
+          </button>
           <button onClick={load} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2">
             <RefreshCw size={13} /> Actualizar
           </button>

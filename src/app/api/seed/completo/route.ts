@@ -203,7 +203,8 @@ const EQUIPOS: E[] = [
 export async function POST() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || (session.user as any).rol !== "ADMINISTRADOR") {
+    const rol = (session?.user as any)?.rol;
+    if (!session || !["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"].includes(rol)) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
