@@ -96,8 +96,8 @@ const ROOMS: Room[] = [
   { id: "Cuarto de Medicamentos",    label: "Medicamentos", x: 725, y:300, w: 84, h: 44, cat: "Enfermería y Coordinación" },
   { id: "Cuarto de Material Estéril",label: "Mat. Estéril", x: 809, y:300, w: 83, h: 44, cat: "Enfermería y Coordinación" },
   { id: "Archivo de Expedientes",    label: "Archivo",      x: 892, y:300, w: 83, h: 44, cat: "Médica y Administrativa" },
-  { id: "Hidratación Pediátrica",    label: "Hidr. Ped.",   x: 725, y:344, w: 84, h: 44, cat: "Hidratación" },
-  { id: "Hidratación Adultos",       label: "Hidr. Adult.", x: 809, y:344, w: 83, h: 44, cat: "Hidratación" },
+  { id: "Hidratación Pediátrica",    label: "Hidr. Ped.",   x: 725, y:344, w: 84, h:140, cat: "Hidratación" },
+  { id: "Hidratación Adultos",       label: "Hidr. Adult.", x: 809, y:344, w: 83, h:140, cat: "Hidratación" },
   { id: "Cuarto de Limpieza",        label: "Limpieza",     x: 892, y:344, w: 83, h: 44, cat: "Apoyo General" },
 
   // ── ROW E  (y=396, h=80) — Triage + Recepción + Descontam ───────────────
