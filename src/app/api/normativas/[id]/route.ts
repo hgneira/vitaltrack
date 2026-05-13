@@ -3,15 +3,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-const CAN_EDIT = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "URGENCIAS"];
+const CAN_DELETE = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"];
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string; docId: string }> }) {
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !CAN_EDIT.includes((session.user as any).rol))
+    if (!session || !CAN_DELETE.includes((session.user as any).rol))
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-    const { docId } = await params;
-    await prisma.documentoEquipo.delete({ where: { id: docId } });
+    const { id } = await params;
+    await prisma.normativa.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Error" }, { status: 500 });

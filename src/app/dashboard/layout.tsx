@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -8,11 +8,16 @@ import {
   LayoutDashboard, Users, CalendarDays, Stethoscope,
   SprayCan, Pill, UserCog, LogOut, ChevronRight, Bell, ClipboardList, UserCircle,
   Activity, Wrench, BarChart2, FileText, Menu, X, PanelLeftClose, PanelLeftOpen,
-  Building2, Map,
+  Building2, Map as MapIcon, BookOpen, MessageSquare, AlertTriangle,
 } from "lucide-react";
 import NotificationBell from "./_components/NotificationBell";
 import Clock from "./_components/Clock";
 import SessionTimeout from "./_components/SessionTimeout";
+import ChatNotifications from "./_components/ChatNotifications";
+
+interface ChatToast {
+  id: string; autor: string; contenido: string; canal: string; canalId: string; urgente: boolean;
+}
 
 // Navigation items per role
 const ALL_NAV = [
@@ -27,6 +32,7 @@ const ALL_NAV = [
     section: "Mi Cuenta",
     items: [
       { href: "/dashboard/perfil", label: "Mi Perfil", icon: UserCircle, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "RECEPCION", "LIMPIEZA", "MANTENIMIENTO", "FARMACIA", "URGENCIAS"] },
+      { href: "/dashboard/chat",   label: "Chat",      icon: MessageSquare, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "RECEPCION", "LIMPIEZA", "MANTENIMIENTO", "FARMACIA", "URGENCIAS"] },
     ],
   },
   {
@@ -47,48 +53,49 @@ const ALL_NAV = [
   {
     section: "Ing. Biomédica",
     items: [
-      { href: "/dashboard/biomedica", label: "Equipo Médico", icon: Stethoscope, roles: ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"] },
-      { href: "/dashboard/biomedica/mis-tareas", label: "Mis tareas", icon: ClipboardList, roles: ["INGENIERIA_BIOMEDICA"] },
-      { href: "/dashboard/biomedica/equipo", label: "Mi Equipo", icon: ClipboardList, roles: ["JEFE_BIOMEDICA"] },
-      { href: "/dashboard/biomedica/equipo", label: "Equipo Biomédica", icon: Users, roles: ["ADMINISTRADOR"] },
+      { href: "/dashboard/biomedica",            label: "Equipo Médico",    icon: Stethoscope,   roles: ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "MANTENIMIENTO"] },
+      { href: "/dashboard/biomedica/mis-tareas", label: "Mis tareas",       icon: ClipboardList, roles: ["INGENIERIA_BIOMEDICA", "MANTENIMIENTO"] },
+      { href: "/dashboard/biomedica/equipo",     label: "Mi Equipo",        icon: ClipboardList, roles: ["JEFE_BIOMEDICA"] },
+      { href: "/dashboard/biomedica/equipo",     label: "Equipo Biomédica", icon: Users,         roles: ["ADMINISTRADOR"] },
     ],
   },
   {
     section: "Servicios",
     items: [
       { href: "/dashboard/limpieza", label: "Limpieza / Mantto.", icon: SprayCan, roles: ["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"] },
-      { href: "/dashboard/farmacia", label: "Farmacia", icon: Pill, roles: ["ADMINISTRADOR", "FARMACIA"] },
+      { href: "/dashboard/farmacia", label: "Farmacia",           icon: Pill,     roles: ["ADMINISTRADOR", "FARMACIA"] },
     ],
   },
   {
     section: "Hospital",
     items: [
       { href: "/dashboard/equipos", label: "Inventario General", icon: Building2, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "MANTENIMIENTO", "URGENCIAS"] },
+      { href: "/dashboard/normativas", label: "Normativas", icon: BookOpen, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "RECEPCION", "LIMPIEZA", "MANTENIMIENTO", "FARMACIA", "URGENCIAS"] },
     ],
   },
   {
     section: "Urgencias",
     items: [
-      { href: "/dashboard/urgencias/inventario",    label: "Inventario",       icon: Activity,  roles: ["ADMINISTRADOR", "URGENCIAS"] },
-      { href: "/dashboard/urgencias/mapa",          label: "Mapa",             icon: Map,       roles: ["ADMINISTRADOR", "URGENCIAS"] },
-      { href: "/dashboard/urgencias/mantenimiento", label: "Mantenimiento",    icon: Wrench,    roles: ["ADMINISTRADOR", "URGENCIAS"] },
-      { href: "/dashboard/urgencias/kpis",          label: "Indicadores KPI",  icon: BarChart2, roles: ["ADMINISTRADOR", "URGENCIAS"] },
-      { href: "/dashboard/urgencias/reportes",      label: "Reportes",         icon: FileText,  roles: ["ADMINISTRADOR", "URGENCIAS"] },
+      { href: "/dashboard/urgencias/inventario",    label: "Inventario",      icon: Activity,  roles: ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA"] },
+      { href: "/dashboard/urgencias/mapa",          label: "Mapa",            icon: MapIcon,   roles: ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA"] },
+      { href: "/dashboard/urgencias/mantenimiento", label: "Mantenimiento",   icon: Wrench,    roles: ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA"] },
+      { href: "/dashboard/urgencias/kpis",          label: "Indicadores KPI", icon: BarChart2, roles: ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"] },
+      { href: "/dashboard/urgencias/reportes",      label: "Reportes",        icon: FileText,  roles: ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"] },
     ],
   },
 ];
 
 const ROL_LABELS: Record<string, string> = {
-  ADMINISTRADOR: "Administrador",
-  MEDICO: "Médico",
-  ENFERMERIA: "Enfermería",
-  INGENIERIA_BIOMEDICA: "Ing. Biomédica",
-  JEFE_BIOMEDICA: "Jefe Biomédica",
-  RECEPCION: "Recepción",
-  LIMPIEZA: "Limpieza",
-  MANTENIMIENTO: "Mantenimiento",
-  FARMACIA: "Farmacia",
-  URGENCIAS: "Urgencias",
+  ADMINISTRADOR:        "Administrador del Sistema",
+  MEDICO:               "Médico",
+  ENFERMERIA:           "Enfermería",
+  INGENIERIA_BIOMEDICA: "Ing. Biomédico",
+  JEFE_BIOMEDICA:       "Director / Jefe de Área",
+  RECEPCION:            "Recepción",
+  LIMPIEZA:             "Limpieza",
+  MANTENIMIENTO:        "Téc. Mantenimiento",
+  FARMACIA:             "Farmacia",
+  URGENCIAS:            "Urgencias",
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -96,6 +103,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: session } = useSession();
   const rol: string = (session?.user as any)?.rol ?? "";
   const [foto, setFoto] = useState<string | null>(null);
+  const [chatUnread, setChatUnread] = useState(0);
+  const [chatToasts, setChatToasts] = useState<ChatToast[]>([]);
+  const toastTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const addToast = (t: ChatToast) => {
+    setChatToasts(prev => prev.find(x => x.id === t.id) ? prev : [...prev, t]);
+    const timer = setTimeout(() => removeToast(t.id), 7000);
+    toastTimers.current[t.id] = timer;
+  };
+  const removeToast = (id: string) => {
+    setChatToasts(prev => prev.filter(t => t.id !== id));
+    if (toastTimers.current[id]) { clearTimeout(toastTimers.current[id]); delete toastTimers.current[id]; }
+  };
 
   // Desktop: collapsed state (persisted in localStorage)
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -134,8 +154,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     exact ? pathname === href : pathname.startsWith(href);
 
   const NavLink = ({
-    href, label, icon: Icon, exact,
-  }: { href: string; label: string; icon: React.ElementType; exact?: boolean }) => {
+    href, label, icon: Icon, exact, badge,
+  }: { href: string; label: string; icon: React.ElementType; exact?: boolean; badge?: number }) => {
     const active = isActive(href, exact);
     return (
       <Link
@@ -145,7 +165,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           active ? "bg-cyan-600 text-white shadow-md shadow-cyan-600/20" : "text-slate-400 hover:bg-slate-800 hover:text-white"
         } ${collapsed ? "justify-center" : ""}`}
       >
-        <Icon size={16} className={`shrink-0 ${active ? "text-white" : "text-slate-500 group-hover:text-white"}`} />
+        <span className="relative shrink-0">
+          <Icon size={16} className={active ? "text-white" : "text-slate-500 group-hover:text-white"} />
+          {!!badge && badge > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              {badge > 99 ? "99+" : badge}
+            </span>
+          )}
+        </span>
         {!collapsed && <span className="flex-1 truncate">{label}</span>}
         {!collapsed && active && <ChevronRight size={13} className="opacity-70 shrink-0" />}
       </Link>
@@ -203,7 +230,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {collapsed && <div className="border-t border-slate-700/40 my-2" />}
               <div className="space-y-0.5">
                 {visibleItems.map((item) => (
-                  <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
+                  <NavLink
+                    key={item.href}
+                    href={item.href}
+                    label={item.label}
+                    icon={item.icon}
+                    badge={item.href === "/dashboard/chat" ? chatUnread : undefined}
+                  />
                 ))}
               </div>
             </div>
@@ -211,7 +244,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })}
 
         {/* Alerts — visible to limpieza/mantenimiento */}
-        {["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"].includes(rol) && (
+        {["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol) && (
           <div>
             {!collapsed && (
               <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-1.5">
@@ -262,6 +295,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
+      {/* Global chat notifications (WebSocket listener) */}
+      <ChatNotifications onUnread={setChatUnread} onToast={addToast} />
+
+      {/* In-app chat toast notifications */}
+      <div className="fixed top-16 right-4 z-50 space-y-2 pointer-events-none w-80">
+        {chatToasts.map(t => (
+          <div
+            key={t.id}
+            className={`pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-2xl border text-white animate-in slide-in-from-right duration-300 ${
+              t.urgente ? "bg-red-600 border-red-500" : "bg-slate-800 border-slate-700"
+            }`}
+          >
+            {t.urgente
+              ? <AlertTriangle size={16} className="shrink-0 mt-0.5 text-yellow-300" />
+              : <MessageSquare size={16} className="shrink-0 mt-0.5 text-cyan-400" />
+            }
+            <Link href={`/dashboard/chat?canal=${t.canalId}`} className="flex-1 min-w-0" onClick={() => removeToast(t.id)}>
+              <p className="text-[11px] font-bold uppercase tracking-wide opacity-80">
+                {t.urgente ? "⚡ Urgente · " : ""}{t.canal}
+              </p>
+              <p className="text-sm font-semibold truncate">{t.autor}</p>
+              <p className="text-xs opacity-80 truncate">{t.contenido}</p>
+            </Link>
+            <button onClick={() => removeToast(t.id)} className="shrink-0 opacity-60 hover:opacity-100">
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div

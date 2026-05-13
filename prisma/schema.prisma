@@ -60,6 +60,8 @@ model User {
   interconsultasSolicitadas Interconsulta[]           @relation("interconsultasSolicitadas")
   auditorias              AuditoriaExpediente[]
   consentimientosRegistrados ConsentimientoInformado[] @relation("consentimientosRegistrados")
+  normativasSubidas          Normativa[]               @relation("normativasSubidas")
+  mensajesChat               ChatMensaje[]             @relation("mensajesEnviados")
 
   @@map("usuarios")
 }
@@ -692,4 +694,55 @@ model ConsentimientoInformado {
   registradoPor User?    @relation("consentimientosRegistrados", fields: [registradoPorId], references: [id])
 
   @@map("consentimientos_informados")
+}
+
+// ==================== NORMATIVAS ====================
+
+model Normativa {
+  id          String   @id @default(cuid())
+  titulo      String
+  descripcion String?
+  categoria   String?
+  url         String
+  subidoPorId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subidoPor User @relation("normativasSubidas", fields: [subidoPorId], references: [id])
+
+  @@map("normativas")
+}
+
+// ==================== CHAT INTERNO ====================
+
+enum TipoCanal {
+  GENERAL
+  ROL
+  DIRECTO
+}
+
+model ChatCanal {
+  id        String      @id @default(cuid())
+  nombre    String
+  tipo      TipoCanal   @default(GENERAL)
+  rolAcceso String?     // null = todos; valor = rol específico; "dm:uid1:uid2" = directo
+  createdAt DateTime    @default(now())
+
+  mensajes  ChatMensaje[]
+
+  @@map("chat_canales")
+}
+
+model ChatMensaje {
+  id        String    @id @default(cuid())
+  canalId   String
+  autorId   String
+  contenido String    @db.Text
+  esUrgente Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  canal ChatCanal @relation(fields: [canalId], references: [id], onDelete: Cascade)
+  autor User      @relation("mensajesEnviados", fields: [autorId], references: [id])
+
+  @@map("chat_mensajes")
 }

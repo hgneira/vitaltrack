@@ -6,9 +6,12 @@ import { useSession } from "next-auth/react";
 import {
   ArrowLeft, CheckSquare, FileText, BookOpen, Wrench, Plus, X, Trash2,
   CheckCircle, AlertTriangle, Activity, Clock, Save, ExternalLink,
+  ClipboardList, Printer, Upload, Link as LinkIcon,
 } from "lucide-react";
+import { upload } from "@vercel/blob/client";
 
-type Tab = "accesorios" | "manuales" | "guia" | "mantenimiento";
+type Tab = "accesorios" | "manuales" | "guia" | "mantenimiento" | "formatos";
+type Formato = "baja" | "servicio" | "bitacora" | "recepcion";
 
 const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500";
 
@@ -27,12 +30,23 @@ interface Mantenimiento { id: string; tipo: string; fecha: string; tecnico?: str
 
 const TIPO_DOC_LABEL: Record<string, string> = { MANUAL_USUARIO: "Manual de usuario", MANUAL_SERVICIO: "Manual de servicio", OTRO: "Otro" };
 
+// Converts Google Drive share URLs to embeddable preview URLs
+function toEmbedUrl(url: string): string {
+  // https://drive.google.com/file/d/FILE_ID/view?... → .../preview
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (driveMatch) return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+  // https://docs.google.com/... → append ?embedded=true if needed
+  if (url.includes("docs.google.com")) return url.replace(/\/edit.*$/, "/preview");
+  return url;
+}
+
 export default function DeviceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { data: session } = useSession();
   const rol = (session?.user as any)?.rol ?? "";
   const canEdit = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol);
+  const canUploadDocs = canEdit || rol === "URGENCIAS";
 
   const [equipo, setEquipo] = useState<Equipo | null>(null);
   const [tab, setTab] = useState<Tab>("accesorios");
@@ -52,6 +66,8 @@ export default function DeviceDetailPage() {
   const [pdfView, setPdfView] = useState<Documento | null>(null);
   const [newDoc, setNewDoc] = useState({ tipo: "MANUAL_USUARIO", nombre: "", url: "" });
   const [addingDoc, setAddingDoc] = useState(false);
+  const [uploadMode, setUploadMode] = useState<"url" | "file">("file");
+  const [uploading, setUploading] = useState(false);
 
   // Guía
   const [pasos, setPasos] = useState<string[]>([]);
@@ -65,6 +81,13 @@ export default function DeviceDetailPage() {
   // Riesgo
   const [riesgo, setRiesgo] = useState<{ nivel: string; score: number; factores: string[] } | null>(null);
   const [showRiesgoTooltip, setShowRiesgoTooltip] = useState(false);
+
+  // Formatos oficiales
+  const [formatoActivo, setFormatoActivo] = useState<Formato | null>(null);
+  const today = new Date().toISOString().split("T")[0];
+  const [fmBaja, setFmBaja] = useState({ noControl: "", fecha: today, noInventario: "", valorOriginal: "", fechaAdquisicion: "", valorLibros: "", depreciacion: "", motivo: "OBSOLESCENCIA", otroMotivo: "", descripcion: "", observaciones: "", docManual: false, docFactura: false, docHistorial: false, docDictamen: false });
+  const [fmServicio, setFmServicio] = useState({ folio: "", fecha: today, tipoPreventivo: false, tipoCorrectivo: false, tipoCalib: false, tipoInstalacion: false, tipoVerif: false, descripcion: "", tecnico: "", observaciones: "", recibidoPor: "", calificacion: "" });
+  const [fmRecepcion, setFmRecepcion] = useState({ proveedor: "", contacto: "", telefono: "", fechaCompra: "", costo: "", factura: "", fechaInstalacion: "", garantiaHasta: "", manualUsuario: false, manualServicio: false, manualPartes: false, pendientes: "", recibidoPor: "", cargo: "", fechaRecepcion: today });
 
   useEffect(() => {
     fetch(`/api/equipos/${id}`).then(r => r.json()).then(d => setEquipo(d.equipo ?? d));
@@ -139,9 +162,47 @@ export default function DeviceDetailPage() {
     await loadDocumentos();
   };
 
+  const handleFileUpload = async (file: File) => {
+    if (!file || file.type !== "application/pdf") return;
+    const nombre = newDoc.nombre.trim() || file.name.replace(/\.pdf$/i, "");
+    setUploading(true);
+    try {
+      // Upload goes browser → Vercel Blob directly (no serverless body limit)
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/equipos/upload",
+      });
+
+      // Save URL reference in DB
+      const saveRes = await fetch(`/api/equipos/${id}/documentos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: newDoc.tipo, nombre, url: blob.url }),
+      });
+      if (!saveRes.ok) throw new Error("Error al guardar el documento");
+
+      setNewDoc({ tipo: "MANUAL_USUARIO", nombre: "", url: "" });
+      setAddingDoc(false);
+      await loadDocumentos();
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const deleteDocumento = async (docId: string) => {
     await fetch(`/api/equipos/${id}/documentos/${docId}`, { method: "DELETE" });
     await loadDocumentos();
+  };
+
+  const handlePrint = () => {
+    const s = document.createElement("style");
+    s.id = "__fmt_print";
+    s.textContent = `@media print { * { visibility: hidden !important; } #fmt-doc, #fmt-doc * { visibility: visible !important; } #fmt-doc { position: fixed; inset: 0; background: white; padding: 15mm 20mm; overflow: visible; z-index: 9999; } .no-print { display: none !important; } }`;
+    document.head.appendChild(s);
+    window.print();
+    setTimeout(() => document.getElementById("__fmt_print")?.remove(), 500);
   };
 
   const saveGuia = async () => {
@@ -158,6 +219,7 @@ export default function DeviceDetailPage() {
     { key: "manuales",   label: "Manuales PDF", icon: FileText },
     { key: "guia",       label: "Guía rápida", icon: BookOpen },
     { key: "mantenimiento", label: "Mantenimiento", icon: Wrench },
+    { key: "formatos",   label: "Formatos Oficiales", icon: ClipboardList },
   ];
 
   const ESTADO_CFG: Record<string, { label: string; color: string }> = {
@@ -327,7 +389,7 @@ export default function DeviceDetailPage() {
         {/* ── MANUALES ── */}
         {tab === "manuales" && (
           <div className="max-w-3xl space-y-4">
-            {canEdit && (
+            {canUploadDocs && (
               <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
                 <button onClick={() => setAddingDoc(v => !v)}
                   className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors">
@@ -335,6 +397,7 @@ export default function DeviceDetailPage() {
                 </button>
                 {addingDoc && (
                   <div className="px-6 pb-5 border-t border-slate-100 pt-4 space-y-3">
+                    {/* Tipo + Nombre */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-slate-700 mb-1">Tipo</label>
@@ -349,14 +412,61 @@ export default function DeviceDetailPage() {
                         <input value={newDoc.nombre} onChange={e => setNewDoc(d => ({ ...d, nombre: e.target.value }))} className={inputCls} placeholder="Manual Philips MX450 v2" />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">URL del PDF</label>
-                      <input value={newDoc.url} onChange={e => setNewDoc(d => ({ ...d, url: e.target.value }))} className={inputCls} placeholder="https://..." />
-                      <p className="text-xs text-slate-400 mt-1">Pega el enlace directo al PDF (Google Drive, Dropbox, etc.)</p>
-                    </div>
+
+                    {/* Modo: archivo o URL */}
                     <div className="flex gap-2">
-                      <button onClick={addDocumento} className="flex-1 bg-cyan-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-cyan-700">Guardar</button>
-                      <button onClick={() => setAddingDoc(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm">Cancelar</button>
+                      <button onClick={() => setUploadMode("file")}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${uploadMode === "file" ? "bg-cyan-600 text-white border-cyan-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}>
+                        <Upload size={12} /> Subir archivo PDF
+                      </button>
+                      <button onClick={() => setUploadMode("url")}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${uploadMode === "url" ? "bg-cyan-600 text-white border-cyan-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}>
+                        <LinkIcon size={12} /> Pegar URL
+                      </button>
+                    </div>
+
+                    {/* Subir archivo */}
+                    {uploadMode === "file" && (
+                      <div>
+                        <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? "border-cyan-300 bg-cyan-50" : "border-slate-200 hover:border-cyan-400 hover:bg-cyan-50"}`}>
+                          {uploading ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                              <p className="text-xs text-cyan-600 font-medium">Subiendo archivo…</p>
+                            </div>
+                          ) : (
+                            <>
+                              <Upload size={20} className="text-slate-400 mb-1" />
+                              <p className="text-sm text-slate-500">Haz clic o arrastra un PDF aquí</p>
+                              <p className="text-xs text-slate-400 mt-0.5">Máximo 50 MB</p>
+                            </>
+                          )}
+                          <input type="file" accept="application/pdf" className="hidden" disabled={uploading}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} />
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Pegar URL */}
+                    {uploadMode === "url" && (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">URL del PDF</label>
+                        <input value={newDoc.url} onChange={e => setNewDoc(d => ({ ...d, url: e.target.value }))} className={inputCls} placeholder="https://..." />
+                        <p className="text-xs text-slate-400 mt-1">Enlace directo al PDF (Google Drive, Dropbox, etc.)</p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      {uploadMode === "url" && (
+                        <button onClick={addDocumento} disabled={!newDoc.nombre.trim() || !newDoc.url.trim()}
+                          className="flex-1 bg-cyan-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 disabled:opacity-40">
+                          Guardar
+                        </button>
+                      )}
+                      <button onClick={() => { setAddingDoc(false); setNewDoc({ tipo: "MANUAL_USUARIO", nombre: "", url: "" }); }}
+                        className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm">
+                        Cancelar
+                      </button>
                     </div>
                   </div>
                 )}
@@ -382,7 +492,7 @@ export default function DeviceDetailPage() {
                       <button onClick={() => setPdfView(pdfView?.id === doc.id ? null : doc)} className="px-3 py-1.5 text-xs font-medium bg-cyan-50 text-cyan-700 hover:bg-cyan-100 rounded-lg">
                         {pdfView?.id === doc.id ? "Cerrar" : "Ver PDF"}
                       </button>
-                      {canEdit && (
+                      {canUploadDocs && (
                         <button onClick={() => deleteDocumento(doc.id)} className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg">
                           <Trash2 size={14} />
                         </button>
@@ -391,7 +501,7 @@ export default function DeviceDetailPage() {
                   </div>
                   {pdfView?.id === doc.id && (
                     <div className="h-[600px] bg-slate-100">
-                      <iframe src={doc.url} className="w-full h-full" title={doc.nombre} />
+                      <iframe src={toEmbedUrl(doc.url)} className="w-full h-full" title={doc.nombre} />
                     </div>
                   )}
                 </div>
@@ -487,7 +597,373 @@ export default function DeviceDetailPage() {
           </div>
         )}
 
+        {/* ── FORMATOS OFICIALES ── */}
+        {tab === "formatos" && (
+          <div className="max-w-4xl">
+            <p className="text-xs text-slate-400 mb-5">Selecciona un formato para pre-llenarlo e imprimirlo.</p>
+            <div className="grid grid-cols-2 gap-4">
+              {([
+                { key: "baja",     title: "Acta de Baja",                    desc: "Baja definitiva del equipo del inventario institucional." },
+                { key: "servicio", title: "Orden de Servicio",               desc: "Autorización y registro de servicio técnico o reparación." },
+                { key: "bitacora", title: "Bitácora de Mantenimiento",       desc: "Historial oficial de mantenimientos y calibraciones." },
+                { key: "recepcion",title: "Recepción de Equipo",             desc: "Acta de recepción de equipo nuevo o en préstamo." },
+              ] as { key: Formato; title: string; desc: string }[]).map(f => (
+                <button key={f.key} onClick={() => setFormatoActivo(f.key)}
+                  className="text-left bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-6 hover:ring-cyan-400 hover:shadow-md transition-all group">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center mb-3 group-hover:bg-cyan-100">
+                    <ClipboardList size={20} className="text-cyan-600" />
+                  </div>
+                  <p className="font-semibold text-slate-800 text-sm mb-1">{f.title}</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* ── MODAL FORMATO ── */}
+            {formatoActivo && equipo && (
+              <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center overflow-auto py-6 no-print"
+                onClick={e => { if (e.target === e.currentTarget) setFormatoActivo(null); }}>
+                <div className="bg-white rounded-2xl shadow-2xl w-[900px] max-w-full mx-4">
+                  {/* Modal toolbar */}
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 no-print">
+                    <p className="font-semibold text-slate-800 text-sm">
+                      {formatoActivo === "baja"      && "Acta de Baja para Equipo Médico"}
+                      {formatoActivo === "servicio"  && "Orden de Servicio"}
+                      {formatoActivo === "bitacora"  && "Bitácora de Mantenimiento y Calibración"}
+                      {formatoActivo === "recepcion" && "Recepción de Equipo Médico"}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white text-sm font-medium rounded-lg hover:bg-cyan-700">
+                        <Printer size={14} /> Imprimir
+                      </button>
+                      <button onClick={() => setFormatoActivo(null)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Document area */}
+                  <div id="fmt-doc" style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: "10pt", color: "#000", lineHeight: "1.4" }}>
+
+                    {/* ── ACTA DE BAJA ── */}
+                    {formatoActivo === "baja" && (
+                      <div style={{ padding: "24px 32px" }}>
+                        <div style={{ textAlign: "center", borderBottom: "2px solid #000", paddingBottom: "10px", marginBottom: "14px" }}>
+                          <p style={{ fontWeight: "bold", fontSize: "13pt", margin: 0 }}>HOSPITAL GENERAL DE ZONA</p>
+                          <p style={{ fontWeight: "bold", fontSize: "11pt", margin: "4px 0 0" }}>ACTA DE BAJA PARA EQUIPO MÉDICO</p>
+                          <div style={{ display: "flex", justifyContent: "center", gap: "40px", marginTop: "8px", fontSize: "9pt" }}>
+                            <span>No. Control:&nbsp;<input value={fmBaja.noControl} onChange={e => setFmBaja(s=>({...s,noControl:e.target.value}))} style={iStyle} placeholder="____" /></span>
+                            <span>Fecha:&nbsp;<input type="date" value={fmBaja.fecha} onChange={e => setFmBaja(s=>({...s,fecha:e.target.value}))} style={iStyle} /></span>
+                          </div>
+                        </div>
+
+                        <Section title="I. DATOS DEL EQUIPO" />
+                        <Grid2>
+                          <Field label="Nombre del equipo" value={equipo.nombre} readOnly />
+                          <Field label="Servicio / Área" value={equipo.ubicacion ?? ""} readOnly />
+                          <Field label="Marca" value={equipo.marca ?? ""} readOnly />
+                          <Field label="Modelo" value={equipo.modelo ?? ""} readOnly />
+                          <Field label="No. de Serie" value={equipo.numeroSerie ?? ""} readOnly />
+                          <Field label="Estado actual" value={equipo.estado} readOnly />
+                        </Grid2>
+
+                        <Section title="II. DOCUMENTACIÓN ADJUNTA" />
+                        <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", margin: "6px 0 12px" }}>
+                          {([ ["docManual","Manual de usuario"], ["docFactura","Factura / Comprobante"], ["docHistorial","Historial de mantenimiento"], ["docDictamen","Dictamen técnico"] ] as [keyof typeof fmBaja, string][]).map(([k,l]) => (
+                            <label key={k} style={{ display:"flex", alignItems:"center", gap:"6px", cursor:"pointer", fontSize:"9.5pt" }}>
+                              <input type="checkbox" checked={!!fmBaja[k]} onChange={e => setFmBaja(s=>({...s,[k]:e.target.checked}))} /> {l}
+                            </label>
+                          ))}
+                        </div>
+
+                        <Section title="III. DATOS CONTABLES" />
+                        <Grid2>
+                          <Field label="No. Inventario" value={fmBaja.noInventario} onChange={v=>setFmBaja(s=>({...s,noInventario:v}))} />
+                          <Field label="Valor original ($)" value={fmBaja.valorOriginal} onChange={v=>setFmBaja(s=>({...s,valorOriginal:v}))} />
+                          <Field label="Fecha de adquisición" value={fmBaja.fechaAdquisicion} onChange={v=>setFmBaja(s=>({...s,fechaAdquisicion:v}))} type="date" />
+                          <Field label="Valor en libros ($)" value={fmBaja.valorLibros} onChange={v=>setFmBaja(s=>({...s,valorLibros:v}))} />
+                          <Field label="Depreciación acumulada ($)" value={fmBaja.depreciacion} onChange={v=>setFmBaja(s=>({...s,depreciacion:v}))} />
+                        </Grid2>
+
+                        <Section title="IV. MOTIVO DE BAJA" />
+                        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", margin: "6px 0 8px" }}>
+                          {([["OBSOLESCENCIA","Obsolescencia tecnológica"],["DANO","Daño irreparable"],["VIDA_UTIL","Término de vida útil"],["ROBO","Robo / Extravío"],["OTRO","Otro"]] as [string,string][]).map(([v,l]) => (
+                            <label key={v} style={{ display:"flex", alignItems:"center", gap:"5px", cursor:"pointer", fontSize:"9.5pt" }}>
+                              <input type="radio" name="motivo-baja" value={v} checked={fmBaja.motivo===v} onChange={()=>setFmBaja(s=>({...s,motivo:v}))} /> {l}
+                            </label>
+                          ))}
+                        </div>
+                        {fmBaja.motivo === "OTRO" && (
+                          <div style={{ marginBottom: "8px" }}>
+                            <Field label="Especifique" value={fmBaja.otroMotivo} onChange={v=>setFmBaja(s=>({...s,otroMotivo:v}))} />
+                          </div>
+                        )}
+                        <div style={{ marginBottom: "8px" }}>
+                          <p style={{ fontSize:"9pt", fontWeight:"bold", marginBottom:"2px" }}>Descripción del motivo:</p>
+                          <textarea value={fmBaja.descripcion} onChange={e=>setFmBaja(s=>({...s,descripcion:e.target.value}))} rows={3}
+                            style={{ width:"100%", borderTop:"none", borderLeft:"none", borderRight:"none", borderBottom:"1px solid #555", resize:"none", outline:"none", fontSize:"10pt", fontFamily:"inherit" }} />
+                        </div>
+
+                        <Section title="V. OBSERVACIONES" />
+                        <textarea value={fmBaja.observaciones} onChange={e=>setFmBaja(s=>({...s,observaciones:e.target.value}))} rows={2}
+                          style={{ width:"100%", borderTop:"none", borderLeft:"none", borderRight:"none", borderBottom:"1px solid #555", resize:"none", outline:"none", fontSize:"10pt", fontFamily:"inherit", marginBottom:"20px" }} />
+
+                        <SignatureRow labels={["Responsable del Área","Jefe de Ing. Biomédica","Jefe de Recursos Materiales","Director(a) General"]} />
+                      </div>
+                    )}
+
+                    {/* ── ORDEN DE SERVICIO ── */}
+                    {formatoActivo === "servicio" && (
+                      <div style={{ padding: "24px 32px" }}>
+                        <div style={{ textAlign: "center", borderBottom: "2px solid #000", paddingBottom: "10px", marginBottom: "14px" }}>
+                          <p style={{ fontWeight: "bold", fontSize: "13pt", margin: 0 }}>HOSPITAL GENERAL DE ZONA</p>
+                          <p style={{ fontWeight: "bold", fontSize: "11pt", margin: "4px 0 0" }}>ORDEN DE SERVICIO</p>
+                          <div style={{ display: "flex", justifyContent: "center", gap: "40px", marginTop: "8px", fontSize: "9pt" }}>
+                            <span>Folio:&nbsp;<input value={fmServicio.folio} onChange={e=>setFmServicio(s=>({...s,folio:e.target.value}))} style={iStyle} placeholder="OS-0001" /></span>
+                            <span>Fecha:&nbsp;<input type="date" value={fmServicio.fecha} onChange={e=>setFmServicio(s=>({...s,fecha:e.target.value}))} style={iStyle} /></span>
+                          </div>
+                        </div>
+
+                        <Section title="I. DATOS DEL EQUIPO" />
+                        <Grid2>
+                          <Field label="Nombre del equipo" value={equipo.nombre} readOnly />
+                          <Field label="Servicio / Área" value={equipo.ubicacion ?? ""} readOnly />
+                          <Field label="Marca" value={equipo.marca ?? ""} readOnly />
+                          <Field label="Modelo" value={equipo.modelo ?? ""} readOnly />
+                          <Field label="No. de Serie" value={equipo.numeroSerie ?? ""} readOnly />
+                        </Grid2>
+
+                        <Section title="II. TIPO DE TRABAJO" />
+                        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", margin: "6px 0 14px" }}>
+                          {([["tipoPreventivo","Mantenimiento Preventivo"],["tipoCorrectivo","Mantenimiento Correctivo"],["tipoCalib","Calibración"],["tipoInstalacion","Instalación"],["tipoVerif","Verificación"]] as [keyof typeof fmServicio, string][]).map(([k,l]) => (
+                            <label key={k} style={{ display:"flex", alignItems:"center", gap:"6px", cursor:"pointer", fontSize:"9.5pt" }}>
+                              <input type="checkbox" checked={!!fmServicio[k]} onChange={e=>setFmServicio(s=>({...s,[k]:e.target.checked}))} /> {l}
+                            </label>
+                          ))}
+                        </div>
+
+                        <Section title="III. DESCRIPCIÓN DEL SERVICIO" />
+                        <textarea value={fmServicio.descripcion} onChange={e=>setFmServicio(s=>({...s,descripcion:e.target.value}))} rows={4}
+                          style={{ width:"100%", borderTop:"none", borderLeft:"none", borderRight:"none", borderBottom:"1px solid #555", resize:"none", outline:"none", fontSize:"10pt", fontFamily:"inherit", marginBottom:"14px" }} />
+
+                        <Section title="IV. REFACCIONES Y MATERIALES UTILIZADOS" />
+                        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"9pt", marginBottom:"14px" }}>
+                          <thead>
+                            <tr style={{ background:"#f0f0f0" }}>
+                              {["No.","Descripción","Cantidad","Costo Unitario","Subtotal"].map(h => (
+                                <th key={h} style={{ border:"1px solid #aaa", padding:"4px 8px", textAlign:"left" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[1,2,3,4].map(n => (
+                              <tr key={n}>
+                                <td style={{ border:"1px solid #aaa", padding:"4px 8px", width:"30px" }}>{n}</td>
+                                {[1,2,3,4].map(c => <td key={c} style={{ border:"1px solid #aaa", padding:"4px 8px", minWidth:"80px" }}>&nbsp;</td>)}
+                              </tr>
+                            ))}
+                            <tr>
+                              <td colSpan={4} style={{ border:"1px solid #aaa", padding:"4px 8px", textAlign:"right", fontWeight:"bold" }}>Total</td>
+                              <td style={{ border:"1px solid #aaa", padding:"4px 8px" }}>&nbsp;</td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        <Grid2>
+                          <Field label="Técnico responsable" value={fmServicio.tecnico} onChange={v=>setFmServicio(s=>({...s,tecnico:v}))} />
+                          <Field label="Calificación del servicio" value={fmServicio.calificacion} onChange={v=>setFmServicio(s=>({...s,calificacion:v}))} />
+                        </Grid2>
+
+                        <Section title="V. OBSERVACIONES" />
+                        <textarea value={fmServicio.observaciones} onChange={e=>setFmServicio(s=>({...s,observaciones:e.target.value}))} rows={2}
+                          style={{ width:"100%", borderTop:"none", borderLeft:"none", borderRight:"none", borderBottom:"1px solid #555", resize:"none", outline:"none", fontSize:"10pt", fontFamily:"inherit", marginBottom:"20px" }} />
+
+                        <SignatureRow labels={["Técnico que realizó el servicio","Jefe de Ing. Biomédica","Responsable del Servicio (recibe)"]} />
+                      </div>
+                    )}
+
+                    {/* ── BITÁCORA ── */}
+                    {formatoActivo === "bitacora" && (
+                      <div style={{ padding: "24px 32px" }}>
+                        <div style={{ textAlign: "center", borderBottom: "2px solid #000", paddingBottom: "10px", marginBottom: "14px" }}>
+                          <p style={{ fontWeight: "bold", fontSize: "13pt", margin: 0 }}>HOSPITAL GENERAL DE ZONA</p>
+                          <p style={{ fontWeight: "bold", fontSize: "11pt", margin: "4px 0 0" }}>BITÁCORA DE MANTENIMIENTO Y CALIBRACIÓN</p>
+                        </div>
+
+                        <Grid2>
+                          <Field label="Equipo" value={equipo.nombre} readOnly />
+                          <Field label="Servicio / Área" value={equipo.ubicacion ?? ""} readOnly />
+                          <Field label="Marca" value={equipo.marca ?? ""} readOnly />
+                          <Field label="Modelo" value={equipo.modelo ?? ""} readOnly />
+                          <Field label="No. de Serie" value={equipo.numeroSerie ?? ""} readOnly />
+                        </Grid2>
+
+                        <Section title="CALIBRACIÓN" />
+                        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"9pt", marginBottom:"16px" }}>
+                          <thead>
+                            <tr style={{ background:"#f0f0f0" }}>
+                              {["Fecha","Descripción","Observaciones","Responsable","Firma"].map(h=>(
+                                <th key={h} style={{ border:"1px solid #aaa", padding:"5px 8px", textAlign:"left" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {mantenimientos.filter(m=>m.tipo==="CALIBRACION").length === 0
+                              ? [1,2,3].map(n=>(
+                                  <tr key={n}>
+                                    {[1,2,3,4,5].map(c=><td key={c} style={{ border:"1px solid #aaa", padding:"6px 8px", minWidth:"80px" }}>&nbsp;</td>)}
+                                  </tr>
+                                ))
+                              : mantenimientos.filter(m=>m.tipo==="CALIBRACION").map(m=>(
+                                  <tr key={m.id}>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px", whiteSpace:"nowrap" }}>{new Date(m.fecha).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})}</td>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>{m.descripcion ?? ""}</td>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>&nbsp;</td>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>{m.tecnico ?? ""}</td>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>&nbsp;</td>
+                                  </tr>
+                                ))
+                            }
+                          </tbody>
+                        </table>
+
+                        <Section title="MANTENIMIENTO" />
+                        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"9pt", marginBottom:"16px" }}>
+                          <thead>
+                            <tr style={{ background:"#f0f0f0" }}>
+                              {["Fecha","Tipo","Descripción","Observaciones","Responsable","Firma"].map(h=>(
+                                <th key={h} style={{ border:"1px solid #aaa", padding:"5px 8px", textAlign:"left" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {mantenimientos.filter(m=>m.tipo!=="CALIBRACION").length === 0
+                              ? [1,2,3,4,5].map(n=>(
+                                  <tr key={n}>
+                                    {[1,2,3,4,5,6].map(c=><td key={c} style={{ border:"1px solid #aaa", padding:"6px 8px", minWidth:"60px" }}>&nbsp;</td>)}
+                                  </tr>
+                                ))
+                              : mantenimientos.filter(m=>m.tipo!=="CALIBRACION").map(m=>(
+                                  <tr key={m.id}>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px", whiteSpace:"nowrap" }}>{new Date(m.fecha).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})}</td>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>{m.tipo.charAt(0)+m.tipo.slice(1).toLowerCase()}</td>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>{m.descripcion ?? ""}</td>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>&nbsp;</td>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>{m.tecnico ?? ""}</td>
+                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>&nbsp;</td>
+                                  </tr>
+                                ))
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* ── RECEPCIÓN DE EQUIPO ── */}
+                    {formatoActivo === "recepcion" && (
+                      <div style={{ padding: "24px 32px" }}>
+                        <div style={{ textAlign: "center", borderBottom: "2px solid #000", paddingBottom: "10px", marginBottom: "14px" }}>
+                          <p style={{ fontWeight: "bold", fontSize: "13pt", margin: 0 }}>HOSPITAL GENERAL DE ZONA</p>
+                          <p style={{ fontWeight: "bold", fontSize: "11pt", margin: "4px 0 0" }}>ACTA DE RECEPCIÓN DE EQUIPO MÉDICO</p>
+                        </div>
+
+                        <Section title="I. DATOS DEL EQUIPO" />
+                        <Grid2>
+                          <Field label="Nombre del equipo" value={equipo.nombre} readOnly />
+                          <Field label="Servicio / Área de destino" value={equipo.ubicacion ?? ""} readOnly />
+                          <Field label="Marca" value={equipo.marca ?? ""} readOnly />
+                          <Field label="Modelo" value={equipo.modelo ?? ""} readOnly />
+                          <Field label="No. de Serie" value={equipo.numeroSerie ?? ""} readOnly />
+                          <Field label="Estado al recibir" value={equipo.estado} readOnly />
+                        </Grid2>
+
+                        <Section title="II. DATOS DEL PROVEEDOR" />
+                        <Grid2>
+                          <Field label="Nombre del proveedor" value={fmRecepcion.proveedor} onChange={v=>setFmRecepcion(s=>({...s,proveedor:v}))} />
+                          <Field label="Nombre del contacto" value={fmRecepcion.contacto} onChange={v=>setFmRecepcion(s=>({...s,contacto:v}))} />
+                          <Field label="Teléfono" value={fmRecepcion.telefono} onChange={v=>setFmRecepcion(s=>({...s,telefono:v}))} />
+                        </Grid2>
+
+                        <Section title="III. DATOS DE ADQUISICIÓN" />
+                        <Grid2>
+                          <Field label="Fecha de compra" value={fmRecepcion.fechaCompra} onChange={v=>setFmRecepcion(s=>({...s,fechaCompra:v}))} type="date" />
+                          <Field label="Costo total ($)" value={fmRecepcion.costo} onChange={v=>setFmRecepcion(s=>({...s,costo:v}))} />
+                          <Field label="No. de factura" value={fmRecepcion.factura} onChange={v=>setFmRecepcion(s=>({...s,factura:v}))} />
+                        </Grid2>
+
+                        <Section title="IV. INSTALACIÓN Y GARANTÍA" />
+                        <Grid2>
+                          <Field label="Fecha de instalación" value={fmRecepcion.fechaInstalacion} onChange={v=>setFmRecepcion(s=>({...s,fechaInstalacion:v}))} type="date" />
+                          <Field label="Garantía hasta" value={fmRecepcion.garantiaHasta} onChange={v=>setFmRecepcion(s=>({...s,garantiaHasta:v}))} type="date" />
+                        </Grid2>
+
+                        <Section title="V. MANUALES ENTREGADOS" />
+                        <div style={{ display:"flex", gap:"24px", margin:"6px 0 14px" }}>
+                          {([["manualUsuario","Manual de usuario"],["manualServicio","Manual de servicio"],["manualPartes","Manual de partes/refacciones"]] as [keyof typeof fmRecepcion, string][]).map(([k,l]) => (
+                            <label key={k} style={{ display:"flex", alignItems:"center", gap:"6px", cursor:"pointer", fontSize:"9.5pt" }}>
+                              <input type="checkbox" checked={!!fmRecepcion[k]} onChange={e=>setFmRecepcion(s=>({...s,[k]:e.target.checked}))} /> {l}
+                            </label>
+                          ))}
+                        </div>
+
+                        <Section title="VI. PENDIENTES / OBSERVACIONES" />
+                        <textarea value={fmRecepcion.pendientes} onChange={e=>setFmRecepcion(s=>({...s,pendientes:e.target.value}))} rows={3}
+                          style={{ width:"100%", borderTop:"none", borderLeft:"none", borderRight:"none", borderBottom:"1px solid #555", resize:"none", outline:"none", fontSize:"10pt", fontFamily:"inherit", marginBottom:"14px" }} />
+
+                        <Section title="RECEPCIÓN" />
+                        <Grid2>
+                          <Field label="Recibió" value={fmRecepcion.recibidoPor} onChange={v=>setFmRecepcion(s=>({...s,recibidoPor:v}))} />
+                          <Field label="Cargo" value={fmRecepcion.cargo} onChange={v=>setFmRecepcion(s=>({...s,cargo:v}))} />
+                          <Field label="Fecha de recepción" value={fmRecepcion.fechaRecepcion} onChange={v=>setFmRecepcion(s=>({...s,fechaRecepcion:v}))} type="date" />
+                        </Grid2>
+
+                        <SignatureRow labels={["Recibió (Ing. Biomédica)","Proveedor / Representante","Responsable del Servicio","Dirección"]} />
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
+    </div>
+  );
+}
+
+/* ── Helper sub-components ── */
+const iStyle: React.CSSProperties = { border: "none", borderBottom: "1px solid #555", outline: "none", fontSize: "inherit", fontFamily: "inherit", background: "transparent", width: "120px" };
+
+function Section({ title }: { title: string }) {
+  return <p style={{ fontWeight: "bold", fontSize: "9.5pt", background: "#e8e8e8", padding: "3px 8px", margin: "12px 0 6px", borderLeft: "3px solid #555" }}>{title}</p>;
+}
+
+function Grid2({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 24px", marginBottom: "4px" }}>{children}</div>;
+}
+
+function Field({ label, value, onChange, readOnly, type = "text" }: { label: string; value: string; onChange?: (v: string) => void; readOnly?: boolean; type?: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", marginBottom: "6px" }}>
+      <span style={{ fontSize: "8pt", color: "#555", fontWeight: "bold", marginBottom: "1px" }}>{label}</span>
+      <input type={type} value={value} readOnly={readOnly} onChange={e => onChange?.(e.target.value)}
+        style={{ border: "none", borderBottom: "1px solid #555", outline: "none", fontSize: "10pt", fontFamily: "inherit", background: "transparent", padding: "2px 0", color: readOnly ? "#333" : "#000" }} />
+    </div>
+  );
+}
+
+function SignatureRow({ labels }: { labels: string[] }) {
+  return (
+    <div style={{ display: "flex", gap: "16px", marginTop: "32px" }}>
+      {labels.map(l => (
+        <div key={l} style={{ flex: 1, textAlign: "center" }}>
+          <div style={{ borderBottom: "1px solid #000", height: "40px" }} />
+          <p style={{ fontSize: "8pt", marginTop: "4px", color: "#333" }}>{l}</p>
+          <p style={{ fontSize: "7.5pt", color: "#666", margin: "1px 0" }}>Nombre y firma</p>
+        </div>
+      ))}
     </div>
   );
 }
