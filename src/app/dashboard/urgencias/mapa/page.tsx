@@ -95,10 +95,10 @@ const ROOMS: Room[] = [
   // right sub-cells (stacked 2×3)
   { id: "Cuarto de Medicamentos",   label: "Medicamentos", x: 725, y:300, w:125, h: 44, cat: "Enfermería y Coordinación" },
   { id: "Cuarto de Material Estéril",label: "Mat. Estéril",x: 850, y:300, w:125, h: 44, cat: "Enfermería y Coordinación" },
-  { id: "Archivo de Expedientes",   label: "Archivo",      x: 975, y:300, w:127, h: 44, cat: "Médica y Administrativa" },
+  { id: "Archivo de Expedientes",   label: "Archivo",      x: 975, y:300, w:107, h: 44, cat: "Médica y Administrativa" },
   { id: "Hidratación Pediátrica",   label: "Hidr. Ped.",   x: 725, y:344, w:125, h: 44, cat: "Hidratación" },
   { id: "Hidratación Adultos",      label: "Hidr. Adult.", x: 850, y:344, w:125, h: 44, cat: "Hidratación" },
-  { id: "Cuarto de Limpieza",       label: "Limpieza",     x: 975, y:344, w:127, h: 44, cat: "Apoyo General" },
+  { id: "Cuarto de Limpieza",       label: "Limpieza",     x: 975, y:344, w:107, h: 44, cat: "Apoyo General" },
 
   // ── ROW E  (y=396, h=80) — Triage + Recepción + Descontam ───────────────
   { id: "Cubículo de Triage 1",        label: "Triage 1",    x:  10, y:396, w:118, h: 80, cat: "Clasificación (Triage)" },
@@ -112,12 +112,12 @@ const ROOMS: Room[] = [
   // Sala de Espera spans rows F+G
   { id: "Sala de Espera",            label: "Sala de Espera", x: 170, y:484, w:555, h:148, cat: "Acceso y Recepción" },
   { id: "Sanitario Público (Hombres)", label: "San. H",       x: 725, y:484, w:125, h: 70, cat: "Apoyo General" },
-  { id: "Almacén de Equipos y Suministros", label: "Almacén", x: 850, y:484, w:252, h: 70, cat: "Apoyo General" },
+  { id: "Almacén de Equipos y Suministros", label: "Almacén", x: 850, y:484, w:232, h: 70, cat: "Apoyo General" },
 
   // ── ROW G  (y=554, h=78) ────────────────────────────────────────────────
   { id: "Estación de Sillas de Ruedas", label: "Est. Sillas", x:  10, y:554, w:160, h: 78, cat: "Apoyo General" },
   { id: "Sanitario Público (Mujeres)",  label: "San. M",      x: 725, y:554, w:125, h: 78, cat: "Apoyo General" },
-  { id: "Vestidor de Personal",         label: "Vestidores",  x: 850, y:554, w:252, h: 78, cat: "Apoyo General" },
+  { id: "Vestidor de Personal",         label: "Vestidores",  x: 850, y:554, w:232, h: 78, cat: "Apoyo General" },
 
   // ── ENTRADA ─────────────────────────────────────────────────────────────
   { id: "__entrada__", label: "ENTRADA PRINCIPAL", x: 420, y: 642, w: 290, h: 10, cat: "" },
@@ -302,6 +302,13 @@ export default function MapaUrgenciasPage() {
                 </g>
               );
             })}
+
+            {/* corridor between center rooms and right service column */}
+            <rect x={1082} y={300} width={20} height={332} fill="#e2e8f0" stroke="none" />
+            <text x={1092} y={466} textAnchor="middle" fontSize={7} fill="#94a3b8"
+              transform="rotate(-90,1092,466)" style={{ userSelect: "none" }}>
+              Pasillo
+            </text>
 
             {/* north arrow */}
             <g transform="translate(1228, 640)">
