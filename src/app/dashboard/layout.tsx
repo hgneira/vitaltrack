@@ -69,7 +69,7 @@ const ALL_NAV = [
   {
     section: "Hospital",
     items: [
-      { href: "/dashboard/equipos", label: "Inventario General", icon: Building2, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "MANTENIMIENTO", "URGENCIAS"] },
+      { href: "/dashboard/inventario-general", label: "Inventario General", icon: Building2, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "MANTENIMIENTO", "URGENCIAS"] },
       { href: "/dashboard/normativas", label: "Normativas", icon: BookOpen, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "RECEPCION", "LIMPIEZA", "MANTENIMIENTO", "FARMACIA", "URGENCIAS"] },
     ],
   },
