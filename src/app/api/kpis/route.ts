@@ -12,6 +12,33 @@ export async function GET(request: Request) {
     const area = searchParams.get("area") || null;
     const daysParam = parseInt(searchParams.get("days") || "30");
     const days = isNaN(daysParam) ? 30 : Math.min(daysParam, 365);
+    const urgenciasOnly = searchParams.get("scope") === "urgencias";
+
+    const URGENCIAS_AREAS = [
+      "Sala de Choque","Central de Enfermeras","Sala de Curaciones","Sala de Yesos",
+      "Sala de Rayos X","Cuarto de Ultrasonido","Laboratorio Clínico de Urgencias",
+      "Banco de Sangre / Área de Transfusión","Cuarto de Medicamentos",
+      "Cuarto de Material Estéril","Cuarto de Ropa Limpia","Cuarto de Ropa Sucia",
+      "Cuarto de Limpieza","Hidratación Pediátrica","Hidratación Adultos",
+      "Almacén de Equipos y Suministros","Archivo de Expedientes","Vestidor de Personal",
+      "Área de Trabajo de Enfermería","Cubículo de Observación General 1",
+      "Cubículo de Observación General 2","Cubículo de Observación General 3",
+      "Cubículo de Observación General 4","Cubículo de Observación General 5",
+      "Cubículo de Observación General 6","Cubículo de Observación Pediátrica 1",
+      "Cubículo de Observación Pediátrica 2","Cubículo de Aislamiento 1",
+      "Cubículo de Aislamiento 2","Cubículo de Triage 1","Cubículo de Triage 2",
+      "Cubículo de Triage 3","Módulo de Recepción y Control","Área de Descontaminación",
+      "Estación de Camillas","Estación de Sillas de Ruedas","Oficina del Médico Responsable",
+      "Pasillo de Ambulancias","Sala de Espera","Sala de Juntas y Trabajo Médico",
+      "Sanitario Personal (Hombres)","Sanitario Personal (Mujeres)",
+      "Sanitario Público (Hombres)","Sanitario Público (Mujeres)",
+    ];
+
+    const whereUbicacion = area
+      ? { ubicacion: area }
+      : urgenciasOnly
+      ? { ubicacion: { in: URGENCIAS_AREAS } }
+      : {};
 
     const now = new Date();
     const from = new Date(now);
@@ -20,7 +47,7 @@ export async function GET(request: Request) {
 
     // ── 1. Fetch all equipos with related data ──────────────────────────────
     const equipos = await prisma.equipoMedico.findMany({
-      where: area ? { ubicacion: area } : {},
+      where: { ...whereUbicacion, NOT: { estado: "DADO_DE_BAJA" } },
       include: {
         mantenimientos: { orderBy: { fecha: "asc" } },
         acciones: { orderBy: { createdAt: "asc" } },
@@ -31,7 +58,7 @@ export async function GET(request: Request) {
 
     // ── 2. Fetch maintenance tasks ─────────────────────────────────────────
     const tareas = await prisma.tareaMantenimiento.findMany({
-      where: area ? { equipo: { ubicacion: area } } : {},
+      where: area ? { equipo: { ubicacion: area } } : urgenciasOnly ? { equipo: { ubicacion: { in: URGENCIAS_AREAS } } } : {},
     });
 
     // ── 3. Fetch all acciones in the time window ───────────────────────────

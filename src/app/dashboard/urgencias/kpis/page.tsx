@@ -166,7 +166,22 @@ export default function KpisPage() {
   const [error, setError] = useState<string | null>(null);
   const [area, setArea] = useState("");
   const [days, setDays] = useState(30);
-  const [areas, setAreas] = useState<string[]>([]);
+
+  const areas = [
+    "Sala de Choque","Central de Enfermeras","Sala de Curaciones","Sala de Yesos",
+    "Sala de Rayos X","Cuarto de Ultrasonido","Laboratorio Clínico de Urgencias",
+    "Banco de Sangre / Área de Transfusión","Cuarto de Medicamentos",
+    "Cuarto de Material Estéril","Cuarto de Ropa Limpia","Cuarto de Ropa Sucia",
+    "Cuarto de Limpieza","Hidratación Pediátrica","Hidratación Adultos",
+    "Almacén de Equipos y Suministros","Área de Trabajo de Enfermería",
+    "Cubículo de Observación General 1","Cubículo de Observación General 2",
+    "Cubículo de Observación General 3","Cubículo de Observación General 4",
+    "Cubículo de Observación General 5","Cubículo de Observación General 6",
+    "Cubículo de Observación Pediátrica 1","Cubículo de Observación Pediátrica 2",
+    "Cubículo de Aislamiento 1","Cubículo de Aislamiento 2",
+    "Cubículo de Triage 1","Cubículo de Triage 2","Cubículo de Triage 3",
+    "Módulo de Recepción y Control","Área de Descontaminación",
+  ];
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -174,14 +189,11 @@ export default function KpisPage() {
       const params = new URLSearchParams();
       if (area) params.set("area", area);
       params.set("days", String(days));
+      params.set("scope", "urgencias");
       const res = await fetch(`/api/kpis?${params}`);
       if (!res.ok) throw new Error("Error al cargar KPIs");
       const json = await res.json();
       setData(json);
-      // Collect unique areas
-      if (json.availability?.byArea) {
-        setAreas(json.availability.byArea.map((a: ByArea) => a.nombre).sort());
-      }
     } catch (e) {
       setError("No se pudieron cargar los KPIs");
     }
