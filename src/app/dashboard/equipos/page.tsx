@@ -57,6 +57,8 @@ export default function InventarioGeneralPage() {
       .then(r => r.json())
       .then(d => { if (Array.isArray(d)) setCatalogoAreas(d); })
       .catch(() => {});
+    const interval = setInterval(load, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   const ubicaciones = useMemo(() => {
@@ -101,9 +103,14 @@ export default function InventarioGeneralPage() {
           <h1 className="text-xl font-bold text-slate-900">Inventario General</h1>
           {!loading && <span className="text-xs font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{equipos.length} equipos</span>}
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2">
-          <RefreshCw size={13} /> Actualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/equipos/dados-de-baja" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2">
+            Dados de baja
+          </Link>
+          <button onClick={load} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2">
+            <RefreshCw size={13} /> Actualizar
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto p-8">
