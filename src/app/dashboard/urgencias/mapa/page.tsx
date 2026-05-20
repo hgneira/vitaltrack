@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { X, MapPin, Package, ChevronRight, AlertTriangle, Wrench, CheckCircle } from "lucide-react";
 
 interface Equipo {
@@ -8,6 +9,9 @@ interface Equipo {
   nombre: string;
   estado: string;
   ubicacion?: string;
+  marca?: string;
+  modelo?: string;
+  numeroSerie?: string;
 }
 
 // ─── color palette ──────────────────────────────────────────────────────────
@@ -131,6 +135,7 @@ function roomCenter(r: Room): [number, number] {
 
 // ─── component ───────────────────────────────────────────────────────────────
 export default function MapaUrgenciasPage() {
+  const router = useRouter();
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -375,14 +380,23 @@ export default function MapaUrgenciasPage() {
                   <p className="text-xs">Sin equipos registrados</p>
                 </div>
               ) : (
-                <ul className="space-y-2">
+                <ul className="space-y-1.5">
                   {selectedEquipos.map(eq => (
                     <li key={eq.id}
-                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                      <span className="w-2 h-2 rounded-full shrink-0"
+                      onClick={() => router.push(`/dashboard/equipos/${eq.id}`)}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-50 hover:bg-white hover:shadow-sm hover:ring-1 hover:ring-slate-200 transition-all cursor-pointer group">
+                      <span className="w-2 h-2 rounded-full shrink-0 mt-0.5"
                         style={{ background: ESTADO[eq.estado] ?? "#94a3b8" }} />
-                      <span className="text-sm text-slate-800 font-medium flex-1 truncate">{eq.nombre}</span>
-                      <ChevronRight size={13} className="text-slate-300 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-800 font-medium truncate group-hover:text-slate-900">{eq.nombre}</p>
+                        {(eq.marca || eq.modelo) && (
+                          <p className="text-xs text-slate-400 truncate">{[eq.marca, eq.modelo].filter(Boolean).join(" · ")}</p>
+                        )}
+                        {eq.numeroSerie && (
+                          <p className="text-xs font-mono text-slate-400 truncate">S/N {eq.numeroSerie}</p>
+                        )}
+                      </div>
+                      <ChevronRight size={13} className="text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors" />
                     </li>
                   ))}
                 </ul>
