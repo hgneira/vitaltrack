@@ -5,14 +5,20 @@ import { prisma } from "@/lib/prisma";
 
 const ALLOWED = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "URGENCIAS"];
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !ALLOWED.includes((session.user as any).rol)) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const bajaOnly = searchParams.get("baja") === "1";
+
     const equipos = await prisma.equipoMedico.findMany({
+      where: bajaOnly
+        ? { estado: "DADO_DE_BAJA" }
+        : { NOT: { estado: "DADO_DE_BAJA" } },
       include: {
         mantenimientos: { orderBy: { fecha: "desc" } },
         _count: { select: { mantenimientos: true } },

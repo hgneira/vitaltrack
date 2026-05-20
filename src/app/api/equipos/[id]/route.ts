@@ -45,6 +45,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         ubicacion: body.ubicacion ?? null,
         estado: body.estado,
         descripcion: body.descripcion ?? null,
+        ...(body.tagUid !== undefined ? { tagUid: body.tagUid || null } : {}),
       },
     });
     return NextResponse.json(equipo);

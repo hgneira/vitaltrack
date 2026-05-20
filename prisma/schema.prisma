@@ -62,6 +62,7 @@ model User {
   consentimientosRegistrados ConsentimientoInformado[] @relation("consentimientosRegistrados")
   normativasSubidas          Normativa[]               @relation("normativasSubidas")
   mensajesChat               ChatMensaje[]             @relation("mensajesEnviados")
+  formatosCreados            FormatoRegistro[]         @relation("formatosCreados")
 
   @@map("usuarios")
 }
@@ -189,6 +190,7 @@ model EquipoMedico {
   updatedAt        DateTime     @updatedAt
 
   vidaUtilAnios  Int?         @default(10)
+  tagUid         String?      @unique
 
   mantenimientos      Mantenimiento[]
   tareas              TareaMantenimiento[]
@@ -198,6 +200,8 @@ model EquipoMedico {
   documentos          DocumentoEquipo[]
   guiaRapida          GuiaRapida?
   dispositivosUsados  DispositivoUtilizado[]
+  formatos            FormatoRegistro[]
+  registrosRFID       RegistroRFID[]
 
   @@map("equipos_medicos")
 }
@@ -206,6 +210,7 @@ enum EstadoEquipo {
   ACTIVO
   EN_MANTENIMIENTO
   FUERA_DE_SERVICIO
+  DADO_DE_BAJA
 }
 
 model Mantenimiento {
@@ -711,6 +716,36 @@ model Normativa {
   subidoPor User @relation("normativasSubidas", fields: [subidoPorId], references: [id])
 
   @@map("normativas")
+}
+
+// ==================== TRAZABILIDAD RFID ====================
+
+model RegistroRFID {
+  id          String   @id @default(cuid())
+  equipoId    String
+  equipo      EquipoMedico @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  readerId    String
+  areaOrigen  String?
+  areaDestino String
+  timestamp   String
+  createdAt   DateTime @default(now())
+
+  @@map("registros_rfid")
+}
+
+// ==================== FORMATOS DE EQUIPO ====================
+
+model FormatoRegistro {
+  id          String   @id @default(cuid())
+  equipoId    String
+  equipo      EquipoMedico @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  tipo        String   // "BAJA" | "SERVICIO" | "RECEPCION"
+  datos       String   @db.Text
+  creadoPorId String
+  creadoPor   User     @relation("formatosCreados", fields: [creadoPorId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@map("formatos_registro")
 }
 
 // ==================== CHAT INTERNO ====================

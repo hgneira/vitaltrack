@@ -4,18 +4,19 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
-  ArrowLeft, CheckSquare, FileText, BookOpen, Wrench, Plus, X, Trash2,
+  ArrowLeft, CheckSquare, Square, FileText, BookOpen, Wrench, Plus, X, Trash2,
   CheckCircle, AlertTriangle, Activity, Clock, Save, ExternalLink,
-  ClipboardList, Printer, Upload, Link as LinkIcon,
+  ClipboardList, Printer, Upload, Link as LinkIcon, Pencil, ChevronRight,
 } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 
-type Tab = "accesorios" | "manuales" | "guia" | "mantenimiento" | "formatos";
-type Formato = "baja" | "servicio" | "bitacora" | "recepcion";
+type Tab = "accesorios" | "manuales" | "guia" | "mantenimiento" | "formatos" | "historial";
+type Formato = "baja" | "servicio" | "recepcion";
+interface FormatoSaved { id: string; tipo: string; datos: string; createdAt: string; creadoPor: { nombre: string; apellidos?: string } }
 
 const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500";
 
-interface Equipo { id: string; nombre: string; marca?: string; modelo?: string; numeroSerie?: string; ubicacion?: string; estado: string; }
+interface Equipo { id: string; nombre: string; marca?: string; modelo?: string; numeroSerie?: string; ubicacion?: string; estado: string; tagUid?: string; }
 
 const RIESGO_CFG: Record<string, { label: string; color: string; dot: string }> = {
   BAJO:     { label: "Riesgo Bajo",     color: "bg-emerald-100 text-emerald-700 ring-emerald-200", dot: "bg-emerald-500" },
@@ -26,7 +27,25 @@ interface Accesorio { id: string; nombre: string; requerido: boolean; orden: num
 interface VerifItem { accesorioId: string; accesorio: { nombre: string }; presente: boolean; }
 interface Verificacion { id: string; fecha: string; notas?: string; verificadoPor: { nombre: string; apellidos?: string }; items: VerifItem[]; }
 interface Documento { id: string; tipo: string; nombre: string; url: string; subidoPor: { nombre: string }; createdAt: string; }
-interface Mantenimiento { id: string; tipo: string; fecha: string; tecnico?: string; descripcion?: string; costo?: number; }
+interface Mantenimiento { id: string; tipo: string; fecha: string; tecnico?: string; descripcion?: string; costo?: number; proximoMantenimiento?: string; }
+
+// ── Formato de mantenimiento helpers ──────────────────────────────────────────
+interface FormatoData { version: 2; observaciones: string; hallazgos: string; piezasReemplazadas: string; estadoFinal: string; checklist: Record<string, boolean>; }
+const MANT_CHECKLIST: Record<string, { id: string; label: string }[]> = {
+  PREVENTIVO:  [{ id:"limpiezaExterior",label:"Limpieza exterior" },{ id:"limpiezaInterior",label:"Limpieza interior / filtros" },{ id:"revisionCables",label:"Revisión de cables y conexiones" },{ id:"inspeccionVisual",label:"Inspección visual general" },{ id:"lubricacion",label:"Lubricación de piezas móviles" },{ id:"pruebaFuncionamiento",label:"Prueba de funcionamiento" },{ id:"calibracion",label:"Verificación de calibración" },{ id:"revisionAlarmas",label:"Revisión de alarmas" },{ id:"pruebaSeguridad",label:"Prueba de seguridad eléctrica" },{ id:"documentacion",label:"Documentación actualizada" }],
+  CORRECTIVO:  [{ id:"diagnostico",label:"Diagnóstico de falla" },{ id:"reparacion",label:"Reparación realizada" },{ id:"pruebaFuncionamiento",label:"Prueba de funcionamiento post-reparación" },{ id:"calibracion",label:"Calibración post-reparación" },{ id:"pruebaSeguridad",label:"Prueba de seguridad eléctrica" },{ id:"limpiezaGeneral",label:"Limpieza general" },{ id:"documentacion",label:"Documentación actualizada" }],
+  CALIBRACION: [{ id:"inspeccionVisual",label:"Inspección visual previa" },{ id:"calibracionRealizada",label:"Calibración conforme a especificaciones" },{ id:"registroValores",label:"Registro de valores antes/después" },{ id:"pruebaFuncionamiento",label:"Prueba de funcionamiento" },{ id:"documentacion",label:"Certificado / documentación actualizada" }],
+  DEFAULT:     [{ id:"inspeccionVisual",label:"Inspección visual" },{ id:"limpiezaGeneral",label:"Limpieza general" },{ id:"pruebaFuncionamiento",label:"Prueba de funcionamiento" },{ id:"documentacion",label:"Documentación actualizada" }],
+};
+function getMantChecklist(tipo: string) { return MANT_CHECKLIST[tipo] ?? MANT_CHECKLIST.DEFAULT; }
+function emptyMantFormato(tipo: string): FormatoData {
+  const ch: Record<string,boolean> = {}; getMantChecklist(tipo).forEach(i => { ch[i.id] = false; });
+  return { version: 2, observaciones: "", hallazgos: "", piezasReemplazadas: "", estadoFinal: "OPERATIVO", checklist: ch };
+}
+function parseMantFormato(descripcion?: string): FormatoData | null {
+  if (!descripcion) return null;
+  try { const d = JSON.parse(descripcion); return d.version === 2 ? d as FormatoData : null; } catch { return null; }
+}
 
 const TIPO_DOC_LABEL: Record<string, string> = { MANUAL_USUARIO: "Manual de usuario", MANUAL_SERVICIO: "Manual de servicio", OTRO: "Otro" };
 
@@ -77,6 +96,13 @@ export default function DeviceDetailPage() {
 
   // Mantenimiento
   const [mantenimientos, setMantenimientos] = useState<Mantenimiento[]>([]);
+  const [showMantForm, setShowMantForm] = useState(false);
+  const [editMant, setEditMant] = useState<Mantenimiento | null>(null);
+  const [printMant, setPrintMant] = useState<Mantenimiento | null>(null);
+  const [savingMant, setSavingMant] = useState(false);
+  const [mantForm, setMantForm] = useState({ tipo: "PREVENTIVO", fecha: new Date().toISOString().slice(0,10), tecnico: "", costo: "", proximoMantenimiento: "", nuevoEstado: "" });
+  const [mantFormato, setMantFormato] = useState<FormatoData>(emptyMantFormato("PREVENTIVO"));
+  const [mantError, setMantError] = useState("");
 
   // Riesgo
   const [riesgo, setRiesgo] = useState<{ nivel: string; score: number; factores: string[] } | null>(null);
@@ -84,10 +110,19 @@ export default function DeviceDetailPage() {
 
   // Formatos oficiales
   const [formatoActivo, setFormatoActivo] = useState<Formato | null>(null);
+  const [savingFormato, setSavingFormato] = useState(false);
+  const [editingTag, setEditingTag] = useState(false);
+  const [tagInput, setTagInput] = useState("");
+  const [savingTag, setSavingTag] = useState(false);
+  const [formatosSaved, setFormatosSaved] = useState<FormatoSaved[]>([]);
+  const [historialView, setHistorialView] = useState<FormatoSaved | null>(null);
   const today = new Date().toISOString().split("T")[0];
   const [fmBaja, setFmBaja] = useState({ noControl: "", fecha: today, noInventario: "", valorOriginal: "", fechaAdquisicion: "", valorLibros: "", depreciacion: "", motivo: "OBSOLESCENCIA", otroMotivo: "", descripcion: "", observaciones: "", docManual: false, docFactura: false, docHistorial: false, docDictamen: false });
   const [fmServicio, setFmServicio] = useState({ folio: "", fecha: today, tipoPreventivo: false, tipoCorrectivo: false, tipoCalib: false, tipoInstalacion: false, tipoVerif: false, descripcion: "", tecnico: "", observaciones: "", recibidoPor: "", calificacion: "" });
   const [fmRecepcion, setFmRecepcion] = useState({ proveedor: "", contacto: "", telefono: "", fechaCompra: "", costo: "", factura: "", fechaInstalacion: "", garantiaHasta: "", manualUsuario: false, manualServicio: false, manualPartes: false, pendientes: "", recibidoPor: "", cargo: "", fechaRecepcion: today });
+
+  const loadFormatos = () =>
+    fetch(`/api/equipos/${id}/formatos`).then(r => r.json()).then((d: FormatoSaved[]) => setFormatosSaved(Array.isArray(d) ? d : []));
 
   useEffect(() => {
     fetch(`/api/equipos/${id}`).then(r => r.json()).then(d => setEquipo(d.equipo ?? d));
@@ -96,6 +131,7 @@ export default function DeviceDetailPage() {
     loadDocumentos();
     loadGuia();
     loadMantenimientos();
+    loadFormatos();
     fetch(`/api/equipos/riesgo?equipoId=${id}`)
       .then(r => r.json())
       .then((data: any[]) => { if (Array.isArray(data) && data[0]) setRiesgo(data[0]); })
@@ -220,12 +256,49 @@ export default function DeviceDetailPage() {
     { key: "guia",       label: "Guía rápida", icon: BookOpen },
     { key: "mantenimiento", label: "Mantenimiento", icon: Wrench },
     { key: "formatos",   label: "Formatos Oficiales", icon: ClipboardList },
+    { key: "historial",  label: "Historial de formatos", icon: FileText },
   ];
 
   const ESTADO_CFG: Record<string, { label: string; color: string }> = {
     ACTIVO:            { label: "Activo",            color: "bg-emerald-100 text-emerald-700" },
     EN_MANTENIMIENTO:  { label: "En mantenimiento",  color: "bg-amber-100 text-amber-700" },
     FUERA_DE_SERVICIO: { label: "Fuera de servicio", color: "bg-red-100 text-red-600" },
+    DADO_DE_BAJA:      { label: "Dado de baja",      color: "bg-slate-200 text-slate-600" },
+  };
+
+  const saveFormato = async (tipo: Formato, datos: object) => {
+    setSavingFormato(true);
+    try {
+      await fetch(`/api/equipos/${id}/formatos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, datos }),
+      });
+      await loadFormatos();
+      if (tipo === "BAJA") {
+        // Refresh equipo to show new state, then go to historial tab
+        const d = await fetch(`/api/equipos/${id}`).then(r => r.json());
+        setEquipo(d.equipo ?? d);
+      }
+      setFormatoActivo(null);
+    } finally {
+      setSavingFormato(false);
+    }
+  };
+
+  const saveTag = async () => {
+    setSavingTag(true);
+    try {
+      const d = await fetch(`/api/equipos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...equipo, tagUid: tagInput.trim().toUpperCase() || null }),
+      }).then(r => r.json());
+      setEquipo(d);
+      setEditingTag(false);
+    } finally {
+      setSavingTag(false);
+    }
   };
 
   return (
@@ -245,6 +318,36 @@ export default function DeviceDetailPage() {
             )}
           </div>
           {equipo && <p className="text-xs text-slate-400 mt-0.5">{[equipo.marca, equipo.modelo, equipo.numeroSerie ? `S/N ${equipo.numeroSerie}` : null].filter(Boolean).join(" · ")}</p>}
+          {equipo && (
+            <div className="flex items-center gap-2 mt-1">
+              {editingTag ? (
+                <>
+                  <input
+                    value={tagInput}
+                    onChange={e => setTagInput(e.target.value)}
+                    placeholder="UID RFID (ej: 7E:B8:16:06)"
+                    className="text-xs border border-slate-300 rounded px-2 py-0.5 font-mono w-44 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    onKeyDown={e => { if (e.key === "Enter") saveTag(); if (e.key === "Escape") setEditingTag(false); }}
+                    autoFocus
+                  />
+                  <button onClick={saveTag} disabled={savingTag} className="text-xs text-emerald-600 hover:text-emerald-800 font-medium disabled:opacity-50">
+                    {savingTag ? "Guardando…" : "Guardar"}
+                  </button>
+                  <button onClick={() => setEditingTag(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancelar</button>
+                </>
+              ) : (
+                <button
+                  onClick={() => { setTagInput(equipo.tagUid ?? ""); setEditingTag(true); }}
+                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-cyan-600 transition-colors"
+                >
+                  <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
+                    {equipo.tagUid ? `RFID: ${equipo.tagUid}` : "Asignar tag RFID"}
+                  </span>
+                  <Pencil size={10} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
         {riesgo && (() => {
           const cfg = RIESGO_CFG[riesgo.nivel];
@@ -568,29 +671,61 @@ export default function DeviceDetailPage() {
         {tab === "mantenimiento" && (
           <div className="max-w-2xl">
             <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h2 className="font-semibold text-slate-900">Historial de mantenimiento</h2>
+                <button
+                  onClick={() => {
+                    setEditMant(null);
+                    setMantForm({ tipo: "PREVENTIVO", fecha: new Date().toISOString().slice(0,10), tecnico: "", costo: "", proximoMantenimiento: "", nuevoEstado: "" });
+                    setMantFormato(emptyMantFormato("PREVENTIVO"));
+                    setMantError(""); setShowMantForm(true);
+                  }}
+                  className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+                  <Plus size={13} /> Registrar
+                </button>
               </div>
               {mantenimientos.length === 0 ? (
                 <div className="px-6 py-10 text-center text-slate-400 text-sm">Sin registros</div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {mantenimientos.map(m => (
-                    <div key={m.id} className="px-6 py-4 flex items-start gap-4">
-                      <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                        <Wrench size={14} className="text-amber-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-slate-800">{m.tipo.charAt(0) + m.tipo.slice(1).toLowerCase()}</span>
-                          <span className="text-xs text-slate-400">{new Date(m.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                  {mantenimientos.map(m => {
+                    const fmt = parseMantFormato(m.descripcion);
+                    return (
+                      <div key={m.id} className="px-6 py-4 flex items-start gap-4 group">
+                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                          <Wrench size={14} className="text-amber-600" />
                         </div>
-                        {m.tecnico && <p className="text-xs text-slate-500 mt-0.5">Técnico: {m.tecnico}</p>}
-                        {m.descripcion && <p className="text-xs text-slate-500 mt-0.5">{m.descripcion}</p>}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-slate-800">{m.tipo.charAt(0) + m.tipo.slice(1).toLowerCase()}</span>
+                            <span className="text-xs text-slate-400">{new Date(m.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                          </div>
+                          {m.tecnico && <p className="text-xs text-slate-500 mt-0.5">Técnico: {m.tecnico}</p>}
+                          {fmt ? (
+                            <p className="text-xs text-emerald-600 mt-0.5">Formato completo registrado</p>
+                          ) : m.descripcion ? (
+                            <p className="text-xs text-slate-500 mt-0.5 truncate">{m.descripcion}</p>
+                          ) : null}
+                          {m.proximoMantenimiento && <p className="text-xs text-amber-600 mt-0.5">Próximo: {new Date(m.proximoMantenimiento).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})}</p>}
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          {m.costo != null && <span className="text-xs font-medium text-slate-500 mr-1">${m.costo.toLocaleString("es-MX")}</span>}
+                          <button title="Imprimir formato" onClick={() => setPrintMant(m)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                            <Printer size={13} />
+                          </button>
+                          <button title="Editar" onClick={() => {
+                            setEditMant(m);
+                            setMantForm({ tipo: m.tipo, fecha: new Date(m.fecha).toISOString().slice(0,10), tecnico: m.tecnico ?? "", costo: m.costo?.toString() ?? "", proximoMantenimiento: m.proximoMantenimiento ? new Date(m.proximoMantenimiento).toISOString().slice(0,10) : "", nuevoEstado: "" });
+                            setMantFormato(fmt ?? emptyMantFormato(m.tipo));
+                            setMantError(""); setShowMantForm(true);
+                          }} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                            <Pencil size={13} />
+                          </button>
+                        </div>
                       </div>
-                      {m.costo != null && <span className="text-xs font-medium text-slate-600">${m.costo.toLocaleString("es-MX")}</span>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -605,7 +740,6 @@ export default function DeviceDetailPage() {
               {([
                 { key: "baja",     title: "Acta de Baja",                    desc: "Baja definitiva del equipo del inventario institucional." },
                 { key: "servicio", title: "Orden de Servicio",               desc: "Autorización y registro de servicio técnico o reparación." },
-                { key: "bitacora", title: "Bitácora de Mantenimiento",       desc: "Historial oficial de mantenimientos y calibraciones." },
                 { key: "recepcion",title: "Recepción de Equipo",             desc: "Acta de recepción de equipo nuevo o en préstamo." },
               ] as { key: Formato; title: string; desc: string }[]).map(f => (
                 <button key={f.key} onClick={() => setFormatoActivo(f.key)}
@@ -629,10 +763,18 @@ export default function DeviceDetailPage() {
                     <p className="font-semibold text-slate-800 text-sm">
                       {formatoActivo === "baja"      && "Acta de Baja para Equipo Médico"}
                       {formatoActivo === "servicio"  && "Orden de Servicio"}
-                      {formatoActivo === "bitacora"  && "Bitácora de Mantenimiento y Calibración"}
                       {formatoActivo === "recepcion" && "Recepción de Equipo Médico"}
                     </p>
                     <div className="flex items-center gap-2">
+                      <button
+                        disabled={savingFormato}
+                        onClick={() => {
+                          const datos = formatoActivo === "baja" ? fmBaja : formatoActivo === "servicio" ? fmServicio : fmRecepcion;
+                          saveFormato(formatoActivo!, datos);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-60">
+                        <Save size={14} /> {savingFormato ? "Guardando…" : "Guardar en historial"}
+                      </button>
                       <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white text-sm font-medium rounded-lg hover:bg-cyan-700">
                         <Printer size={14} /> Imprimir
                       </button>
@@ -782,83 +924,6 @@ export default function DeviceDetailPage() {
                       </div>
                     )}
 
-                    {/* ── BITÁCORA ── */}
-                    {formatoActivo === "bitacora" && (
-                      <div style={{ padding: "24px 32px" }}>
-                        <div style={{ textAlign: "center", borderBottom: "2px solid #000", paddingBottom: "10px", marginBottom: "14px" }}>
-                          <p style={{ fontWeight: "bold", fontSize: "13pt", margin: 0 }}>HOSPITAL GENERAL DE ZONA</p>
-                          <p style={{ fontWeight: "bold", fontSize: "11pt", margin: "4px 0 0" }}>BITÁCORA DE MANTENIMIENTO Y CALIBRACIÓN</p>
-                        </div>
-
-                        <Grid2>
-                          <Field label="Equipo" value={equipo.nombre} readOnly />
-                          <Field label="Servicio / Área" value={equipo.ubicacion ?? ""} readOnly />
-                          <Field label="Marca" value={equipo.marca ?? ""} readOnly />
-                          <Field label="Modelo" value={equipo.modelo ?? ""} readOnly />
-                          <Field label="No. de Serie" value={equipo.numeroSerie ?? ""} readOnly />
-                        </Grid2>
-
-                        <Section title="CALIBRACIÓN" />
-                        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"9pt", marginBottom:"16px" }}>
-                          <thead>
-                            <tr style={{ background:"#f0f0f0" }}>
-                              {["Fecha","Descripción","Observaciones","Responsable","Firma"].map(h=>(
-                                <th key={h} style={{ border:"1px solid #aaa", padding:"5px 8px", textAlign:"left" }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {mantenimientos.filter(m=>m.tipo==="CALIBRACION").length === 0
-                              ? [1,2,3].map(n=>(
-                                  <tr key={n}>
-                                    {[1,2,3,4,5].map(c=><td key={c} style={{ border:"1px solid #aaa", padding:"6px 8px", minWidth:"80px" }}>&nbsp;</td>)}
-                                  </tr>
-                                ))
-                              : mantenimientos.filter(m=>m.tipo==="CALIBRACION").map(m=>(
-                                  <tr key={m.id}>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px", whiteSpace:"nowrap" }}>{new Date(m.fecha).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})}</td>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>{m.descripcion ?? ""}</td>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>&nbsp;</td>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>{m.tecnico ?? ""}</td>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>&nbsp;</td>
-                                  </tr>
-                                ))
-                            }
-                          </tbody>
-                        </table>
-
-                        <Section title="MANTENIMIENTO" />
-                        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"9pt", marginBottom:"16px" }}>
-                          <thead>
-                            <tr style={{ background:"#f0f0f0" }}>
-                              {["Fecha","Tipo","Descripción","Observaciones","Responsable","Firma"].map(h=>(
-                                <th key={h} style={{ border:"1px solid #aaa", padding:"5px 8px", textAlign:"left" }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {mantenimientos.filter(m=>m.tipo!=="CALIBRACION").length === 0
-                              ? [1,2,3,4,5].map(n=>(
-                                  <tr key={n}>
-                                    {[1,2,3,4,5,6].map(c=><td key={c} style={{ border:"1px solid #aaa", padding:"6px 8px", minWidth:"60px" }}>&nbsp;</td>)}
-                                  </tr>
-                                ))
-                              : mantenimientos.filter(m=>m.tipo!=="CALIBRACION").map(m=>(
-                                  <tr key={m.id}>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px", whiteSpace:"nowrap" }}>{new Date(m.fecha).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})}</td>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>{m.tipo.charAt(0)+m.tipo.slice(1).toLowerCase()}</td>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>{m.descripcion ?? ""}</td>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>&nbsp;</td>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>{m.tecnico ?? ""}</td>
-                                    <td style={{ border:"1px solid #aaa", padding:"5px 8px" }}>&nbsp;</td>
-                                  </tr>
-                                ))
-                            }
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-
                     {/* ── RECEPCIÓN DE EQUIPO ── */}
                     {formatoActivo === "recepcion" && (
                       <div style={{ padding: "24px 32px" }}>
@@ -928,7 +993,250 @@ export default function DeviceDetailPage() {
           </div>
         )}
 
+        {/* ── HISTORIAL DE FORMATOS ── */}
+        {tab === "historial" && (
+          <div className="max-w-4xl">
+            <p className="text-xs text-slate-400 mb-5">Formatos guardados para este equipo (recepción, órdenes de servicio, actas de baja).</p>
+            {formatosSaved.length === 0 ? (
+              <div className="bg-white rounded-2xl ring-1 ring-slate-200 py-14 text-center text-slate-400 text-sm">
+                Aún no hay formatos guardados para este equipo.
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl ring-1 ring-slate-200 divide-y divide-slate-100 overflow-hidden">
+                {formatosSaved.map(f => {
+                  const TIPO_LABEL: Record<string, string> = { BAJA: "Acta de Baja", SERVICIO: "Orden de Servicio", RECEPCION: "Acta de Recepción" };
+                  const TIPO_COLOR: Record<string, string> = { BAJA: "bg-red-100 text-red-700", SERVICIO: "bg-amber-100 text-amber-700", RECEPCION: "bg-emerald-100 text-emerald-700" };
+                  const datos = (() => { try { return JSON.parse(f.datos); } catch { return {}; } })();
+                  return (
+                    <div key={f.id} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${TIPO_COLOR[f.tipo] ?? "bg-slate-100 text-slate-600"}`}>{TIPO_LABEL[f.tipo] ?? f.tipo}</span>
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">
+                            {f.tipo === "BAJA" && datos.noControl && `No. Control: ${datos.noControl}`}
+                            {f.tipo === "SERVICIO" && datos.folio && `Folio: ${datos.folio}`}
+                            {f.tipo === "RECEPCION" && datos.proveedor && `Proveedor: ${datos.proveedor}`}
+                            {!datos.noControl && !datos.folio && !datos.proveedor && "—"}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {new Date(f.createdAt).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
+                            {f.creadoPor && ` · ${f.creadoPor.nombre}${f.creadoPor.apellidos ? " " + f.creadoPor.apellidos : ""}`}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setHistorialView(f)}
+                        className="text-xs text-cyan-600 hover:text-cyan-800 font-medium flex items-center gap-1">
+                        Ver <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
+
+      {/* ── Historial: View Modal ── */}
+      {historialView && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center overflow-auto py-6 no-print"
+          onClick={e => { if (e.target === e.currentTarget) setHistorialView(null); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-[700px] max-w-full mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 no-print">
+              <p className="font-semibold text-slate-800 text-sm">
+                {{ BAJA: "Acta de Baja", SERVICIO: "Orden de Servicio", RECEPCION: "Acta de Recepción" }[historialView.tipo] ?? historialView.tipo}
+              </p>
+              <div className="flex items-center gap-2">
+                <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white text-sm font-medium rounded-lg hover:bg-cyan-700">
+                  <Printer size={14} /> Imprimir
+                </button>
+                <button onClick={() => setHistorialView(null)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div id="fmt-doc" className="p-6 text-sm text-slate-700 space-y-3">
+              {(() => {
+                const datos = (() => { try { return JSON.parse(historialView.datos); } catch { return {}; } })();
+                return Object.entries(datos).map(([k, v]) => {
+                  if (typeof v === "boolean") return null;
+                  if (!v) return null;
+                  const label = k.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase());
+                  return (
+                    <div key={k} className="border-b border-slate-100 pb-2">
+                      <span className="text-xs text-slate-400 font-semibold uppercase tracking-wide">{label}</span>
+                      <p className="text-slate-800 mt-0.5">{String(v)}</p>
+                    </div>
+                  );
+                });
+              })()}
+              <p className="text-xs text-slate-400 pt-2">
+                Guardado el {new Date(historialView.createdAt).toLocaleString("es-MX")}
+                {historialView.creadoPor && ` por ${historialView.creadoPor.nombre}${historialView.creadoPor.apellidos ? " " + historialView.creadoPor.apellidos : ""}`}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mantenimiento: Form Modal ── */}
+      {showMantForm && equipo && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <h2 className="font-semibold text-slate-900 flex items-center gap-2">
+                <Wrench size={16} className="text-amber-500" />
+                {editMant ? "Editar mantenimiento" : "Nuevo mantenimiento"}
+              </h2>
+              <button onClick={() => setShowMantForm(false)}><X size={18} className="text-slate-400" /></button>
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault(); setSavingMant(true); setMantError("");
+              const body = { tipo: mantForm.tipo, fecha: mantForm.fecha, descripcion: JSON.stringify(mantFormato), tecnico: mantForm.tecnico || null, costo: mantForm.costo ? Number(mantForm.costo) : null, proximoMantenimiento: mantForm.proximoMantenimiento || null, nuevoEstado: mantForm.nuevoEstado || null };
+              const url = editMant ? `/api/equipos/${id}/mantenimientos/${editMant.id}` : `/api/equipos/${id}/mantenimientos`;
+              const res = await fetch(url, { method: editMant ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+              if (res.ok) { loadMantenimientos(); setShowMantForm(false); }
+              else { const d = await res.json(); setMantError(d.error ?? "Error al guardar"); }
+              setSavingMant(false);
+            }} className="overflow-y-auto flex-1 p-6 space-y-5">
+              {/* Datos generales */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Tipo *</label>
+                  <select required value={mantForm.tipo} onChange={e => { setMantForm(f=>({...f,tipo:e.target.value})); const ch:Record<string,boolean>={}; getMantChecklist(e.target.value).forEach(i=>{ch[i.id]=false;}); setMantFormato(f=>({...f,checklist:ch})); }} className={inputCls}>
+                    <option value="PREVENTIVO">Preventivo</option><option value="CORRECTIVO">Correctivo</option><option value="CALIBRACION">Calibración</option><option value="LIMPIEZA">Limpieza</option><option value="VERIFICACION">Verificación</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Fecha *</label>
+                  <input required type="date" value={mantForm.fecha} onChange={e=>setMantForm(f=>({...f,fecha:e.target.value}))} className={inputCls} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Técnico responsable</label>
+                  <input value={mantForm.tecnico} onChange={e=>setMantForm(f=>({...f,tecnico:e.target.value}))} className={inputCls} placeholder="Nombre completo" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Costo (MXN)</label>
+                  <input type="number" min="0" step="0.01" value={mantForm.costo} onChange={e=>setMantForm(f=>({...f,costo:e.target.value}))} className={inputCls} placeholder="0.00" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Próximo mantenimiento</label>
+                  <input type="date" value={mantForm.proximoMantenimiento} onChange={e=>setMantForm(f=>({...f,proximoMantenimiento:e.target.value}))} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Actualizar estado del equipo</label>
+                  <select value={mantForm.nuevoEstado} onChange={e=>setMantForm(f=>({...f,nuevoEstado:e.target.value}))} className={inputCls}>
+                    <option value="">No cambiar</option><option value="ACTIVO">Activo</option><option value="EN_MANTENIMIENTO">En mantenimiento</option><option value="FUERA_DE_SERVICIO">Fuera de servicio</option>
+                  </select>
+                </div>
+              </div>
+              {/* Checklist */}
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Lista de verificación</p>
+                <div className="bg-slate-50 rounded-xl p-3 ring-1 ring-slate-200 grid grid-cols-2 gap-1.5">
+                  {getMantChecklist(mantForm.tipo).map(item => (
+                    <button key={item.id} type="button" onClick={() => setMantFormato(f=>({...f,checklist:{...f.checklist,[item.id]:!f.checklist[item.id]}}))}
+                      className="flex items-center gap-2 text-sm text-left px-2 py-1 rounded-lg hover:bg-white transition-colors">
+                      {mantFormato.checklist[item.id] ? <CheckSquare size={15} className="text-emerald-600 shrink-0" /> : <Square size={15} className="text-slate-300 shrink-0" />}
+                      <span className={mantFormato.checklist[item.id] ? "text-slate-800" : "text-slate-400"}>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Detalle */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Trabajo realizado / Observaciones</label>
+                  <textarea value={mantFormato.observaciones} onChange={e=>setMantFormato(f=>({...f,observaciones:e.target.value}))} rows={3} className={inputCls+" resize-none"} placeholder="Describe el trabajo realizado…" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Hallazgos</label>
+                  <textarea value={mantFormato.hallazgos} onChange={e=>setMantFormato(f=>({...f,hallazgos:e.target.value}))} rows={2} className={inputCls+" resize-none"} placeholder="Hallazgos encontrados…" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Piezas / Partes reemplazadas</label>
+                  <textarea value={mantFormato.piezasReemplazadas} onChange={e=>setMantFormato(f=>({...f,piezasReemplazadas:e.target.value}))} rows={2} className={inputCls+" resize-none"} placeholder="Lista de refacciones utilizadas…" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Estado final del equipo</label>
+                  <select value={mantFormato.estadoFinal} onChange={e=>setMantFormato(f=>({...f,estadoFinal:e.target.value}))} className={inputCls}>
+                    <option value="OPERATIVO">Operativo</option><option value="REQUIERE_SEGUIMIENTO">Requiere seguimiento</option><option value="FUERA_DE_SERVICIO">Fuera de servicio</option>
+                  </select>
+                </div>
+              </div>
+              {mantError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{mantError}</p>}
+              <div className="flex gap-3 pt-1">
+                <button type="submit" disabled={savingMant} className="flex-1 bg-amber-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50">
+                  {savingMant ? "Guardando…" : editMant ? "Guardar cambios" : "Guardar formato"}
+                </button>
+                <button type="button" onClick={()=>setShowMantForm(false)} className="px-4 py-2.5 rounded-lg text-sm text-slate-600 bg-slate-100 hover:bg-slate-200">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mantenimiento: Print Modal ── */}
+      {printMant && equipo && (() => {
+        const fmt = parseMantFormato(printMant.descripcion);
+        const items = getMantChecklist(printMant.tipo);
+        return (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <style>{`@media print { body > * { display:none!important; } #mant-print-doc { display:block!important; position:fixed; inset:0; background:white; z-index:9999; padding:32px; overflow:auto; } }`}</style>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <h2 className="font-semibold text-slate-900 flex items-center gap-2"><Printer size={16} className="text-amber-500" /> Formato de Mantenimiento</h2>
+                <div className="flex items-center gap-2">
+                  <button onClick={()=>window.print()} className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"><Printer size={14} /> Imprimir</button>
+                  <button onClick={()=>setPrintMant(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={18} /></button>
+                </div>
+              </div>
+              <div className="overflow-y-auto flex-1 p-6">
+                <div id="mant-print-doc" className="border-2 border-slate-900 rounded-lg overflow-hidden">
+                  <div className="bg-slate-900 text-white px-6 py-3 flex items-center justify-between">
+                    <div><p className="font-bold text-sm uppercase tracking-wide">Hospital — {equipo.ubicacion ?? "Urgencias"}</p><p className="text-xs text-slate-300 mt-0.5">Formato de Registro de Mantenimiento</p></div>
+                    <div className="text-right"><p className="text-xs text-slate-300">Folio</p><p className="font-mono text-sm font-bold">{printMant.id.slice(-8).toUpperCase()}</p></div>
+                  </div>
+                  <div className="p-4 grid grid-cols-2 gap-x-6 gap-y-2 border-b border-slate-200 text-sm">
+                    <p className="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Datos del Equipo</p>
+                    {[["Equipo",equipo.nombre],["Ubicación",equipo.ubicacion??"—"],["Marca",equipo.marca??"—"],["Modelo",equipo.modelo??"—"],["N° Serie",equipo.numeroSerie??"—"],["Tipo",printMant.tipo.charAt(0)+printMant.tipo.slice(1).toLowerCase()],["Fecha",new Date(printMant.fecha).toLocaleDateString("es-MX",{day:"2-digit",month:"long",year:"numeric"})],["Técnico",printMant.tecnico??"—"]].map(([l,v])=>(
+                      <div key={l}><span className="text-xs text-slate-400">{l}: </span><span className="font-medium text-slate-800">{v}</span></div>
+                    ))}
+                    {printMant.proximoMantenimiento && <div><span className="text-xs text-slate-400">Próximo: </span><span className="font-medium text-slate-800">{new Date(printMant.proximoMantenimiento).toLocaleDateString("es-MX",{day:"2-digit",month:"long",year:"numeric"})}</span></div>}
+                  </div>
+                  <div className="p-4 border-b border-slate-200">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Lista de Verificación</p>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                      {items.map(item => {
+                        const checked = fmt?.checklist?.[item.id] ?? false;
+                        return <div key={item.id} className="flex items-center gap-2 text-sm">{checked?<CheckSquare size={14} className="text-emerald-600 shrink-0"/>:<Square size={14} className="text-slate-300 shrink-0"/>}<span className={checked?"text-slate-800":"text-slate-400"}>{item.label}</span></div>;
+                      })}
+                    </div>
+                  </div>
+                  {fmt && <>
+                    {fmt.observaciones && <div className="p-4 border-b border-slate-200"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Trabajo Realizado / Observaciones</p><p className="text-sm text-slate-700 whitespace-pre-wrap">{fmt.observaciones}</p></div>}
+                    {fmt.hallazgos && <div className="p-4 border-b border-slate-200"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Hallazgos</p><p className="text-sm text-slate-700 whitespace-pre-wrap">{fmt.hallazgos}</p></div>}
+                    {fmt.piezasReemplazadas && <div className="p-4 border-b border-slate-200"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Piezas / Partes Reemplazadas</p><p className="text-sm text-slate-700 whitespace-pre-wrap">{fmt.piezasReemplazadas}</p></div>}
+                    <div className="p-4 border-b border-slate-200"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Estado Final</p><p className="text-sm font-semibold text-slate-800">{fmt.estadoFinal==="OPERATIVO"?"✓ Operativo":fmt.estadoFinal==="REQUIERE_SEGUIMIENTO"?"⚠ Requiere seguimiento":"✗ Fuera de servicio"}</p></div>
+                  </>}
+                  {!fmt && printMant.descripcion && <div className="p-4 border-b border-slate-200"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Descripción</p><p className="text-sm text-slate-700 whitespace-pre-wrap">{printMant.descripcion}</p></div>}
+                  <div className="p-4 grid grid-cols-2 gap-8">
+                    {["Técnico responsable","Jefe de área / Vo. Bo."].map(l=>(
+                      <div key={l}><div className="border-b border-slate-400 mb-1 pb-6"/><p className="text-xs text-center text-slate-500">{l}</p>{l==="Técnico responsable"&&printMant.tecnico&&<p className="text-xs text-center font-medium text-slate-700">{printMant.tecnico}</p>}</div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
