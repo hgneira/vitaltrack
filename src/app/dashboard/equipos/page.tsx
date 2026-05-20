@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Activity, Search, CheckCircle, Wrench, AlertTriangle, MapPin, Filter, X, RefreshCw, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { Activity, Search, CheckCircle, Wrench, AlertTriangle, MapPin, Filter, X, RefreshCw, ChevronDown, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Equipo {
   id: string; nombre: string; marca?: string; modelo?: string;
@@ -23,6 +24,7 @@ const RIESGO_CFG: Record<string, { label: string; color: string; dot: string }> 
 };
 
 export default function InventarioGeneralPage() {
+  const router = useRouter();
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -201,7 +203,7 @@ export default function InventarioGeneralPage() {
                           const Icon = cfg.icon;
                           const ultimo = eq.mantenimientos[eq.mantenimientos.length - 1];
                           return (
-                            <tr key={eq.id} className="hover:bg-slate-50 group">
+                            <tr key={eq.id} onClick={() => router.push(`/dashboard/equipos/${eq.id}`)} className="hover:bg-slate-50 group cursor-pointer">
                               <td className="px-6 py-3">
                                 <div className="flex items-center gap-3">
                                   <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
@@ -233,12 +235,7 @@ export default function InventarioGeneralPage() {
                               <td className="px-6 py-3 text-sm text-slate-500">
                                 {ultimo ? new Date(ultimo.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "Sin registro"}
                               </td>
-                              <td className="px-6 py-3 text-right">
-                                <Link href={`/dashboard/equipos/${eq.id}`}
-                                  className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs text-cyan-600 hover:text-cyan-800 font-medium ml-auto w-fit">
-                                  <ExternalLink size={13} /> Ver ficha
-                                </Link>
-                              </td>
+                              <td className="px-6 py-3" />
                             </tr>
                           );
                         })}
