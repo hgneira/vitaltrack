@@ -341,7 +341,11 @@ export default function InventarioPage() {
     setEquipos(Array.isArray(d) ? d.filter((e: Equipo) => URGENCIAS_SET.has(e.ubicacion ?? "")) : []);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const equiposByArea = useMemo(() => {
     const map: Record<string, Equipo[]> = {};
