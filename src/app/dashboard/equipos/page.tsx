@@ -34,32 +34,34 @@ export default function InventarioGeneralPage() {
   const [riesgos, setRiesgos] = useState<Record<string, { nivel: string; score: number }>>({});
   const [catalogoAreas, setCatalogoAreas] = useState<{ nombre: string }[]>([]);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (initial = false) => {
+    if (initial) setLoading(true);
     const [data, rdata] = await Promise.all([
       fetch("/api/equipos").then(r => r.json()),
       fetch("/api/equipos/riesgo").then(r => r.json()).catch(() => []),
     ]);
     const list: Equipo[] = Array.isArray(data) ? data : [];
     setEquipos(list);
-    const initial: Record<string, boolean> = {};
-    const areas = [...new Set(list.map(e => e.ubicacion ?? "Sin área"))];
-    areas.forEach((a, i) => { initial[a] = i === 0; });
-    setOpenAreas(initial);
+    if (initial) {
+      const initAreas: Record<string, boolean> = {};
+      const areas = [...new Set(list.map(e => e.ubicacion ?? "Sin área"))];
+      areas.forEach((a, i) => { initAreas[a] = i === 0; });
+      setOpenAreas(initAreas);
+    }
     if (Array.isArray(rdata)) {
       const map: Record<string, { nivel: string; score: number }> = {};
       rdata.forEach((r: any) => { map[r.equipoId] = { nivel: r.nivel, score: r.score }; });
       setRiesgos(map);
     }
-    setLoading(false);
+    if (initial) setLoading(false);
   };
   useEffect(() => {
-    load();
+    load(true);
     fetch("/api/areas?simple=1")
       .then(r => r.json())
       .then(d => { if (Array.isArray(d)) setCatalogoAreas(d); })
       .catch(() => {});
-    const interval = setInterval(load, 2000);
+    const interval = setInterval(() => load(false), 2000);
     return () => clearInterval(interval);
   }, []);
 

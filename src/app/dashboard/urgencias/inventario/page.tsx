@@ -335,15 +335,15 @@ export default function InventarioPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (initial = false) => {
+    if (initial) setLoading(true);
     const d = await fetch("/api/equipos").then(r => r.json()).catch(() => []);
     setEquipos(Array.isArray(d) ? d.filter((e: Equipo) => URGENCIAS_SET.has(e.ubicacion ?? "")) : []);
-    setLoading(false);
+    if (initial) setLoading(false);
   };
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 2000);
+    load(true);
+    const interval = setInterval(() => load(false), 2000);
     return () => clearInterval(interval);
   }, []);
 
