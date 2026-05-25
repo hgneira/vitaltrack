@@ -140,11 +140,16 @@ export default function MapaUrgenciasPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadEquipos = async (initial = false) => {
+    const d = await fetch("/api/equipos").then(r => r.json()).catch(() => []);
+    setEquipos(Array.isArray(d) ? d : []);
+    if (initial) setLoading(false);
+  };
+
   useEffect(() => {
-    fetch("/api/equipos")
-      .then(r => r.json())
-      .then(d => { setEquipos(Array.isArray(d) ? d : []); setLoading(false); })
-      .catch(() => setLoading(false));
+    loadEquipos(true);
+    const interval = setInterval(() => loadEquipos(false), 2000);
+    return () => clearInterval(interval);
   }, []);
 
   const equiposByArea = useMemo(() => {
