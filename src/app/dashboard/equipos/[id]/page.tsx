@@ -13,6 +13,7 @@ import { upload } from "@vercel/blob/client";
 type Tab = "accesorios" | "manuales" | "guia" | "mantenimiento" | "formatos" | "historial";
 type Formato = "baja" | "servicio" | "recepcion";
 interface FormatoSaved { id: string; tipo: string; datos: string; createdAt: string; creadoPor: { nombre: string; apellidos?: string } }
+interface RegistroRFID { id: string; readerId: string; areaOrigen?: string; areaDestino: string; timestamp: string; createdAt: string; }
 
 const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500";
 
@@ -116,6 +117,7 @@ export default function DeviceDetailPage() {
   const [savingTag, setSavingTag] = useState(false);
   const [formatosSaved, setFormatosSaved] = useState<FormatoSaved[]>([]);
   const [historialView, setHistorialView] = useState<FormatoSaved | null>(null);
+  const [movimientos, setMovimientos] = useState<RegistroRFID[]>([]);
   const today = new Date().toISOString().split("T")[0];
   const [fmBaja, setFmBaja] = useState({ noControl: "", fecha: today, noInventario: "", valorOriginal: "", fechaAdquisicion: "", valorLibros: "", depreciacion: "", motivo: "OBSOLESCENCIA", otroMotivo: "", descripcion: "", observaciones: "", docManual: false, docFactura: false, docHistorial: false, docDictamen: false });
   const [fmServicio, setFmServicio] = useState({ folio: "", fecha: today, tipoPreventivo: false, tipoCorrectivo: false, tipoCalib: false, tipoInstalacion: false, tipoVerif: false, descripcion: "", tecnico: "", observaciones: "", recibidoPor: "", calificacion: "" });
@@ -123,6 +125,9 @@ export default function DeviceDetailPage() {
 
   const loadFormatos = () =>
     fetch(`/api/equipos/${id}/formatos`).then(r => r.json()).then((d: FormatoSaved[]) => setFormatosSaved(Array.isArray(d) ? d : []));
+
+  const loadMovimientos = () =>
+    fetch(`/api/equipos/${id}/movimientos`).then(r => r.json()).then((d: RegistroRFID[]) => setMovimientos(Array.isArray(d) ? d : []));
 
   useEffect(() => {
     fetch(`/api/equipos/${id}`).then(r => r.json()).then(d => setEquipo(d.equipo ?? d));
@@ -132,6 +137,7 @@ export default function DeviceDetailPage() {
     loadGuia();
     loadMantenimientos();
     loadFormatos();
+    loadMovimientos();
     fetch(`/api/equipos/riesgo?equipoId=${id}`)
       .then(r => r.json())
       .then((data: any[]) => { if (Array.isArray(data) && data[0]) setRiesgo(data[0]); })
@@ -256,7 +262,7 @@ export default function DeviceDetailPage() {
     { key: "guia",       label: "Guía rápida", icon: BookOpen },
     { key: "mantenimiento", label: "Mantenimiento", icon: Wrench },
     { key: "formatos",   label: "Formatos Oficiales", icon: ClipboardList },
-    { key: "historial",  label: "Historial de formatos", icon: FileText },
+    { key: "historial",  label: "Historial", icon: Clock },
   ];
 
   const ESTADO_CFG: Record<string, { label: string; color: string }> = {
@@ -995,45 +1001,106 @@ export default function DeviceDetailPage() {
 
         {/* ── HISTORIAL DE FORMATOS ── */}
         {tab === "historial" && (
-          <div className="max-w-4xl">
-            <p className="text-xs text-slate-400 mb-5">Formatos guardados para este equipo (recepción, órdenes de servicio, actas de baja).</p>
-            {formatosSaved.length === 0 ? (
-              <div className="bg-white rounded-2xl ring-1 ring-slate-200 py-14 text-center text-slate-400 text-sm">
-                Aún no hay formatos guardados para este equipo.
+          <div className="max-w-4xl space-y-6">
+
+            {/* ── Mantenimientos ── */}
+            <div className="bg-white rounded-2xl ring-1 ring-slate-200 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+                <Wrench size={14} className="text-amber-500" />
+                <h3 className="font-semibold text-slate-800 text-sm">Mantenimientos</h3>
+                <span className="ml-auto text-xs text-slate-400">{mantenimientos.length} registro{mantenimientos.length !== 1 ? "s" : ""}</span>
               </div>
-            ) : (
-              <div className="bg-white rounded-2xl ring-1 ring-slate-200 divide-y divide-slate-100 overflow-hidden">
-                {formatosSaved.map(f => {
-                  const TIPO_LABEL: Record<string, string> = { BAJA: "Acta de Baja", SERVICIO: "Orden de Servicio", RECEPCION: "Acta de Recepción" };
-                  const TIPO_COLOR: Record<string, string> = { BAJA: "bg-red-100 text-red-700", SERVICIO: "bg-amber-100 text-amber-700", RECEPCION: "bg-emerald-100 text-emerald-700" };
-                  const datos = (() => { try { return JSON.parse(f.datos); } catch { return {}; } })();
-                  return (
-                    <div key={f.id} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${TIPO_COLOR[f.tipo] ?? "bg-slate-100 text-slate-600"}`}>{TIPO_LABEL[f.tipo] ?? f.tipo}</span>
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">
-                            {f.tipo === "BAJA" && datos.noControl && `No. Control: ${datos.noControl}`}
-                            {f.tipo === "SERVICIO" && datos.folio && `Folio: ${datos.folio}`}
-                            {f.tipo === "RECEPCION" && datos.proveedor && `Proveedor: ${datos.proveedor}`}
-                            {!datos.noControl && !datos.folio && !datos.proveedor && "—"}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            {new Date(f.createdAt).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
-                            {f.creadoPor && ` · ${f.creadoPor.nombre}${f.creadoPor.apellidos ? " " + f.creadoPor.apellidos : ""}`}
-                          </p>
-                        </div>
+              {mantenimientos.length === 0 ? (
+                <div className="px-5 py-8 text-center text-slate-400 text-sm">Sin registros</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {mantenimientos.map(m => (
+                    <div key={m.id} className="px-5 py-3.5 flex items-center gap-4">
+                      <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                        <Wrench size={12} className="text-amber-600" />
                       </div>
-                      <button
-                        onClick={() => setHistorialView(f)}
-                        className="text-xs text-cyan-600 hover:text-cyan-800 font-medium flex items-center gap-1">
-                        Ver <ChevronRight size={14} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800">{m.tipo.charAt(0) + m.tipo.slice(1).toLowerCase()}</p>
+                        {m.tecnico && <p className="text-xs text-slate-400">Técnico: {m.tecnico}</p>}
+                      </div>
+                      <span className="text-xs text-slate-400 shrink-0">{new Date(m.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                      <button onClick={() => setPrintMant(m)} className="p-1.5 rounded-lg text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-colors shrink-0">
+                        <Printer size={13} />
                       </button>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Movimientos RFID ── */}
+            <div className="bg-white rounded-2xl ring-1 ring-slate-200 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+                <Activity size={14} className="text-cyan-500" />
+                <h3 className="font-semibold text-slate-800 text-sm">Movimientos</h3>
+                <span className="ml-auto text-xs text-slate-400">{movimientos.length} registro{movimientos.length !== 1 ? "s" : ""}</span>
               </div>
-            )}
+              {movimientos.length === 0 ? (
+                <div className="px-5 py-8 text-center text-slate-400 text-sm">Sin movimientos registrados</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {movimientos.map(mv => (
+                    <div key={mv.id} className="px-5 py-3.5 flex items-center gap-4">
+                      <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+                        <Activity size={12} className="text-cyan-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800">{mv.areaDestino}</p>
+                        {mv.areaOrigen && <p className="text-xs text-slate-400">Desde: {mv.areaOrigen}</p>}
+                      </div>
+                      <span className="text-xs text-slate-400 shrink-0">{mv.timestamp}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Formatos guardados ── */}
+            <div className="bg-white rounded-2xl ring-1 ring-slate-200 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+                <ClipboardList size={14} className="text-slate-500" />
+                <h3 className="font-semibold text-slate-800 text-sm">Formatos oficiales</h3>
+                <span className="ml-auto text-xs text-slate-400">{formatosSaved.length} registro{formatosSaved.length !== 1 ? "s" : ""}</span>
+              </div>
+              {formatosSaved.length === 0 ? (
+                <div className="px-5 py-8 text-center text-slate-400 text-sm">Sin formatos guardados</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {formatosSaved.map(f => {
+                    const TIPO_LABEL: Record<string, string> = { BAJA: "Acta de Baja", SERVICIO: "Orden de Servicio", RECEPCION: "Acta de Recepción" };
+                    const TIPO_COLOR: Record<string, string> = { BAJA: "bg-red-100 text-red-700", SERVICIO: "bg-amber-100 text-amber-700", RECEPCION: "bg-emerald-100 text-emerald-700" };
+                    const datos = (() => { try { return JSON.parse(f.datos); } catch { return {}; } })();
+                    return (
+                      <div key={f.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${TIPO_COLOR[f.tipo] ?? "bg-slate-100 text-slate-600"}`}>{TIPO_LABEL[f.tipo] ?? f.tipo}</span>
+                          <div>
+                            <p className="text-sm font-medium text-slate-800">
+                              {f.tipo === "BAJA" && datos.noControl ? `No. Control: ${datos.noControl}` :
+                               f.tipo === "SERVICIO" && datos.folio ? `Folio: ${datos.folio}` :
+                               f.tipo === "RECEPCION" && datos.proveedor ? `Proveedor: ${datos.proveedor}` : "—"}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {new Date(f.createdAt).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
+                              {f.creadoPor && ` · ${f.creadoPor.nombre}${f.creadoPor.apellidos ? " " + f.creadoPor.apellidos : ""}`}
+                            </p>
+                          </div>
+                        </div>
+                        <button onClick={() => setHistorialView(f)} className="text-xs text-cyan-600 hover:text-cyan-800 font-medium flex items-center gap-1">
+                          Ver <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
