@@ -3,8 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-const ALLOWED = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "URGENCIAS"];
-const CAN_EDIT = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"];
+const ALLOWED = ["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS"];
+const CAN_EDIT = ["ADMINISTRADOR", "JEFE_BIOMEDICA"];
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

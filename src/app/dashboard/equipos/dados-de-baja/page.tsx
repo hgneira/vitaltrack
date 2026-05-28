@@ -16,7 +16,7 @@ interface Equipo {
   updatedAt: string;
 }
 
-const ALLOWED = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"];
+const ALLOWED = ["ADMINISTRADOR", "JEFE_BIOMEDICA"];
 
 export default function DadosDeBajaPage() {
   const { data: session, status } = useSession();

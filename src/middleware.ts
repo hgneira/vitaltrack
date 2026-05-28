@@ -7,10 +7,10 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   "/dashboard/empleados":   ["ADMINISTRADOR"],
   "/dashboard/pacientes":   ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "RECEPCION", "URGENCIAS"],
   "/dashboard/citas":       ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "RECEPCION"],
-  "/dashboard/biomedica":   ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "MANTENIMIENTO"],
-  "/dashboard/limpieza":    ["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"],
-  "/dashboard/farmacia":    ["ADMINISTRADOR", "FARMACIA"],
-  "/dashboard/urgencias":   ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"],
+  "/dashboard/biomedica":   ["ADMINISTRADOR", "JEFE_BIOMEDICA", "MANTENIMIENTO"],
+  "/dashboard/limpieza":    ["ADMINISTRADOR", "MANTENIMIENTO"],
+  "/dashboard/farmacia":    ["ADMINISTRADOR"],
+  "/dashboard/urgencias":   ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"],
   // /dashboard/dispositivo and /dashboard/equipos open to all authenticated roles
 };
 

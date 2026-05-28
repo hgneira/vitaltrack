@@ -26,9 +26,9 @@ const ROL_LABELS: Record<string, string> = {
 
 const AREA_GROUPS = [
   { label: "Área Médica",              icon: "🩺", roles: ["MEDICO", "ENFERMERIA", "RECEPCION"] },
-  { label: "Ing. Biomédica",           icon: "⚙️", roles: ["JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"] },
-  { label: "Farmacia",                 icon: "💊", roles: ["FARMACIA"] },
-  { label: "Limpieza & Mantenimiento", icon: "🧹", roles: ["LIMPIEZA", "MANTENIMIENTO"] },
+  { label: "Ing. Biomédica",           icon: "⚙️", roles: ["JEFE_BIOMEDICA"] },
+  { label: "Farmacia",                 icon: "💊", roles: [] },
+  { label: "Limpieza & Mantenimiento", icon: "🧹", roles: ["MANTENIMIENTO"] },
 ];
 
 const ESTADOS = ["PRESENTE", "AUSENTE", "PERMISO", "VACACIONES", "INCAPACIDAD"] as const;

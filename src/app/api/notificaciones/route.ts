@@ -52,9 +52,9 @@ export async function GET() {
     }
 
     // ── ALERTAS PENDIENTES ────────────────────────────────────────────────────
-    if (["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"].includes(rol)) {
+    if (["ADMINISTRADOR", "MANTENIMIENTO"].includes(rol)) {
       const tipoWhere =
-        rol === "LIMPIEZA"       ? { tipo: "LIMPIEZA"      as const } :
+        rol ===        ? { tipo:       as const } :
         rol === "MANTENIMIENTO"  ? { tipo: "MANTENIMIENTO" as const } : {};
 
       const alertas = await prisma.alerta.findMany({
@@ -77,7 +77,7 @@ export async function GET() {
     }
 
     // ── MEDICAMENTOS BAJO STOCK ───────────────────────────────────────────────
-    if (["ADMINISTRADOR", "FARMACIA"].includes(rol)) {
+    if (["ADMINISTRADOR"].includes(rol)) {
       const meds = await prisma.medicamento.findMany({
         where: { activo: true },
         select: { id: true, nombre: true, stock: true, stockMinimo: true, updatedAt: true },
@@ -97,9 +97,9 @@ export async function GET() {
     }
 
     // ── TAREAS BIOMÉDICAS ─────────────────────────────────────────────────────
-    if (["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol)) {
+    if (["ADMINISTRADOR", "JEFE_BIOMEDICA"].includes(rol)) {
       const tareaWhere =
-        rol === "INGENIERIA_BIOMEDICA"
+        rol === 
           ? { asignadoAId: userId, estado: { in: ["PENDIENTE" as const, "EN_PROCESO" as const] } }
           : { estado: { in: ["PENDIENTE" as const, "EN_PROCESO" as const] } };
 
@@ -116,7 +116,7 @@ export async function GET() {
           tipo: "tarea",
           titulo: t.estado === "PENDIENTE" ? "Tarea pendiente" : "Tarea en proceso",
           descripcion: `${t.equipo.nombre} · ${t.descripcion ?? t.tipo.toLowerCase()}`,
-          href: rol === "INGENIERIA_BIOMEDICA" ? "/dashboard/biomedica/mis-tareas" : "/dashboard/biomedica",
+          href: rol ===  ? "/dashboard/biomedica/mis-tareas" : "/dashboard/biomedica",
           fecha: t.fecha.toISOString(),
           urgente: t.fecha < today && t.estado === "PENDIENTE",
         });

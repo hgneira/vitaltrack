@@ -18,7 +18,7 @@ const CATEGORIAS = [
   "Otro",
 ];
 
-const CAN_MANAGE = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"];
+const CAN_MANAGE = ["ADMINISTRADOR", "JEFE_BIOMEDICA"];
 
 interface Normativa {
   id: string;

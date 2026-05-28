@@ -3,8 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import {
   UserCog, Plus, Search, Check, X, Pencil, Trash2, AlertTriangle,
-  Stethoscope, HeartPulse, FlaskConical, SprayCan, Pill, Phone,
-  Wrench, ShieldCheck, Users, ConciergeBell, Activity, DatabaseZap,
+  Stethoscope, HeartPulse, FlaskConical,
+  Wrench, ShieldCheck, Users, ConciergeBell, Activity,
 } from "lucide-react";
 
 interface Usuario {
@@ -34,20 +34,17 @@ const ROL_CFG: Record<string, {
   ADMINISTRADOR:       { label: "Administrador",   color: "bg-violet-100 text-violet-700", avatar: "bg-violet-500", border: "border-violet-200",  icon: ShieldCheck },
   MEDICO:              { label: "Médico",           color: "bg-cyan-100   text-cyan-700",   avatar: "bg-cyan-500",   border: "border-cyan-200",    icon: Stethoscope },
   ENFERMERIA:          { label: "Enfermería",       color: "bg-pink-100   text-pink-700",   avatar: "bg-pink-500",   border: "border-pink-200",    icon: HeartPulse },
-  INGENIERIA_BIOMEDICA:{ label: "Ing. Biomédica",   color: "bg-blue-100   text-blue-700",   avatar: "bg-blue-500",   border: "border-blue-200",    icon: FlaskConical },
   JEFE_BIOMEDICA:      { label: "Jefe Biomédica",   color: "bg-indigo-100 text-indigo-700", avatar: "bg-indigo-500", border: "border-indigo-200",  icon: FlaskConical },
   RECEPCION:           { label: "Recepción",        color: "bg-amber-100  text-amber-700",  avatar: "bg-amber-500",  border: "border-amber-200",   icon: ConciergeBell },
-  LIMPIEZA:            { label: "Limpieza",         color: "bg-emerald-100 text-emerald-700",avatar:"bg-emerald-500",border: "border-emerald-200", icon: SprayCan },
   MANTENIMIENTO:       { label: "Mantenimiento",    color: "bg-slate-100  text-slate-700",  avatar: "bg-slate-500",  border: "border-slate-200",   icon: Wrench },
-  FARMACIA:            { label: "Farmacia",         color: "bg-orange-100 text-orange-700", avatar: "bg-orange-500", border: "border-orange-200",  icon: Pill },
   URGENCIAS:           { label: "Urgencias",        color: "bg-red-100    text-red-700",    avatar: "bg-red-500",    border: "border-red-200",     icon: Activity },
 };
 
 // Display order for sections
 const ROL_ORDER = [
   "ADMINISTRADOR", "MEDICO", "ENFERMERIA",
-  "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA",
-  "RECEPCION", "LIMPIEZA", "MANTENIMIENTO", "FARMACIA", "URGENCIAS",
+  "JEFE_BIOMEDICA",
+  "RECEPCION", "MANTENIMIENTO", "URGENCIAS",
 ];
 
 const emptyForm = { nombre: "", apellidos: "", titulo: "", email: "", password: "", rol: "MEDICO", especialidad: "", telefono: "" };

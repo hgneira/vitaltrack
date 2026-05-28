@@ -65,7 +65,7 @@ export default function DeviceDetailPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const rol = (session?.user as any)?.rol ?? "";
-  const canEdit = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol);
+  const canEdit = ["ADMINISTRADOR", "JEFE_BIOMEDICA"].includes(rol);
   const canUploadDocs = canEdit || rol === "URGENCIAS";
 
   const [equipo, setEquipo] = useState<Equipo | null>(null);
@@ -1173,7 +1173,7 @@ export default function DeviceDetailPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Tipo *</label>
                   <select required value={mantForm.tipo} onChange={e => { setMantForm(f=>({...f,tipo:e.target.value})); const ch:Record<string,boolean>={}; getMantChecklist(e.target.value).forEach(i=>{ch[i.id]=false;}); setMantFormato(f=>({...f,checklist:ch})); }} className={inputCls}>
-                    <option value="PREVENTIVO">Preventivo</option><option value="CORRECTIVO">Correctivo</option><option value="CALIBRACION">Calibración</option><option value="LIMPIEZA">Limpieza</option><option value="VERIFICACION">Verificación</option>
+                    <option value="PREVENTIVO">Preventivo</option><option value="CORRECTIVO">Correctivo</option><option value="CALIBRACION">Calibración</option><option value=>Limpieza</option><option value="VERIFICACION">Verificación</option>
                   </select>
                 </div>
                 <div>

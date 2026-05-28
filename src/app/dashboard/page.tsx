@@ -58,13 +58,13 @@ export default function DashboardPage() {
         fetch("/api/citas").then((r) => r.json()).then((d) => setCitas(Array.isArray(d) ? d : [])),
       );
     }
-    if (["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "URGENCIAS"].includes(rol)) {
+    if (["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS"].includes(rol)) {
       fetches.push(fetch("/api/equipos").then((r) => r.json()).then((d) => setEquipos(Array.isArray(d) ? d : [])));
     }
-    if (["ADMINISTRADOR", "FARMACIA"].includes(rol)) {
+    if (["ADMINISTRADOR"].includes(rol)) {
       fetches.push(fetch("/api/medicamentos").then((r) => r.json()).then((d) => setMedicamentos(Array.isArray(d) ? d : [])));
     }
-    if (["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"].includes(rol)) {
+    if (["ADMINISTRADOR", "MANTENIMIENTO"].includes(rol)) {
       fetches.push(fetch("/api/alertas?estado=PENDIENTE").then((r) => r.json()).then((d) => setAlertas(Array.isArray(d) ? d : [])));
     }
 
@@ -91,7 +91,7 @@ export default function DashboardPage() {
       { label: "Citas hoy", value: citasHoy.length, icon: CalendarCheck, color: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-600", ring: "ring-emerald-100" },
     );
   }
-  if (["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol)) {
+  if (["ADMINISTRADOR", "JEFE_BIOMEDICA"].includes(rol)) {
     stats.push({ label: "Equipos médicos", value: equipos.length, icon: Stethoscope, color: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-600", ring: "ring-blue-100" });
   }
   if (rol === "URGENCIAS") {
@@ -106,10 +106,10 @@ export default function DashboardPage() {
       { label: "Mantos. vencidos",       value: vencidos,       icon: Wrench,         color: "bg-amber-500",   bg: "bg-amber-50",   text: "text-amber-600",   ring: "ring-amber-100" },
     );
   }
-  if (["ADMINISTRADOR", "FARMACIA"].includes(rol)) {
+  if (["ADMINISTRADOR"].includes(rol)) {
     stats.push({ label: "Medicamentos (bajo stock)", value: medsBajoStock, icon: Pill, color: "bg-orange-500", bg: "bg-orange-50", text: "text-orange-600", ring: "ring-orange-100" });
   }
-  if (["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"].includes(rol)) {
+  if (["ADMINISTRADOR", "MANTENIMIENTO"].includes(rol)) {
     stats.push({ label: "Alertas pendientes", value: (alertas as unknown[]).length, icon: Bell, color: "bg-red-500", bg: "bg-red-50", text: "text-red-600", ring: "ring-red-100" });
   }
 
@@ -123,17 +123,17 @@ export default function DashboardPage() {
     actions.push({ label: "Registrar paciente", desc: "Añadir nuevo expediente", href: "/dashboard/pacientes/nuevo", icon: Users, color: "bg-violet-50 text-violet-600" });
     actions.push({ label: "Programar cita", desc: "Agendar nueva consulta", href: "/dashboard/citas/nueva", icon: CalendarDays, color: "bg-cyan-50 text-cyan-600" });
   }
-  if (["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol)) {
+  if (["ADMINISTRADOR", "JEFE_BIOMEDICA"].includes(rol)) {
     actions.push({ label: "Equipo médico", desc: "Inventario y mantenimientos", href: "/dashboard/biomedica", icon: Stethoscope, color: "bg-blue-50 text-blue-600" });
   }
   if (rol === "JEFE_BIOMEDICA") {
     actions.push({ label: "Mi Equipo", desc: "Ver tareas del equipo biomédico", href: "/dashboard/biomedica/equipo", icon: Users, color: "bg-indigo-50 text-indigo-600" });
   }
-  if (["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"].includes(rol)) {
+  if (["ADMINISTRADOR", "MANTENIMIENTO"].includes(rol)) {
     actions.push({ label: "Áreas del hospital", desc: "Registrar limpieza/manttto.", href: "/dashboard/limpieza", icon: SprayCan, color: "bg-emerald-50 text-emerald-600" });
     actions.push({ label: "Ver alertas", desc: "Revisar alertas pendientes", href: "/dashboard/alertas", icon: Bell, color: "bg-amber-50 text-amber-600" });
   }
-  if (["ADMINISTRADOR", "FARMACIA"].includes(rol)) {
+  if (["ADMINISTRADOR"].includes(rol)) {
     actions.push({ label: "Inventario farmacia", desc: "Medicamentos y movimientos", href: "/dashboard/farmacia", icon: Pill, color: "bg-orange-50 text-orange-600" });
   }
   if (rol === "URGENCIAS") {

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-const CAN_EDIT = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "URGENCIAS"];
+const CAN_EDIT = ["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS"];
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string; docId: string }> }) {
   try {

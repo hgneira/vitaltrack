@@ -182,7 +182,7 @@ export async function GET(request: Request) {
       CORRECTIVO: allMantsInWindow.filter(m => m.tipo === "CORRECTIVO").length,
       CALIBRACION: allMantsInWindow.filter(m => m.tipo === "CALIBRACION").length,
       INSPECCION: allMantsInWindow.filter(m => m.tipo === "INSPECCION").length,
-      LIMPIEZA: allMantsInWindow.filter(m => m.tipo === "LIMPIEZA").length,
+      LIMPIEZA: allMantsInWindow.filter(m => m.tipo === ).length,
       VERIFICACION: allMantsInWindow.filter(m => m.tipo === "VERIFICACION").length,
     };
 

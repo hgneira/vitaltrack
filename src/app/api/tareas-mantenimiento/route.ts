@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-const ALLOWED = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"];
+const ALLOWED = ["ADMINISTRADOR", "JEFE_BIOMEDICA"];
 
 export async function GET(request: Request) {
   try {
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const rol = (session.user as any).rol;
 
     const tareas = await prisma.tareaMantenimiento.findMany({
-      where: rol === "INGENIERIA_BIOMEDICA"
+      where: rol === 
         ? { OR: [{ asignadoAId: userId }, { asignadoAId: null }] }
         : {},
       include: {

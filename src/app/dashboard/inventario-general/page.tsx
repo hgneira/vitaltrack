@@ -92,7 +92,7 @@ const ESTADO_CFG: Record<string, { label: string; color: string; dot: string; ic
   EN_MANTENIMIENTO:  { label: "En mantenimiento",  color: "bg-amber-100 text-amber-700 ring-1 ring-amber-200",       dot: "bg-amber-400",  icon: Wrench },
   FUERA_DE_SERVICIO: { label: "Fuera de servicio", color: "bg-red-100 text-red-600 ring-1 ring-red-200",             dot: "bg-red-500",    icon: AlertTriangle },
 };
-const TIPO_MANT = ["PREVENTIVO", "CORRECTIVO", "CALIBRACION", "LIMPIEZA", "VERIFICACION"] as const;
+const TIPO_MANT = ["PREVENTIVO", "CORRECTIVO", "CALIBRACION", "VERIFICACION"] as const;
 const emptyMant = { tipo: "PREVENTIVO", fecha: new Date().toISOString().slice(0, 10), tecnico: "", descripcion: "", costo: "", proximoMantenimiento: "", nuevoEstado: "" };
 const emptyForm = { nombre: "", marca: "", modelo: "", numeroSerie: "", fechaAdquisicion: "", ubicacion: "", estado: "ACTIVO", descripcion: "" };
 const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -527,15 +527,15 @@ export default function InventarioGeneralPage() {
                       const cfg = ESTADO_CFG[eq.estado] ?? { label: eq.estado, color: "bg-slate-100 text-slate-600", dot: "bg-slate-400", icon: Activity };
                       const ultimo = eq.mantenimientos[eq.mantenimientos.length - 1];
                       return (
-                        <tr key={eq.id} className="hover:bg-slate-50 transition-colors group">
+                        <tr key={eq.id} className="hover:bg-slate-50 transition-colors group cursor-pointer">
                           <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
+                            <Link href={`/dashboard/equipos/${eq.id}`} className="flex items-center gap-3">
                               <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
                               <div>
-                                <p className="text-sm font-medium text-slate-900">{eq.nombre}</p>
+                                <p className="text-sm font-medium text-slate-900 group-hover:text-blue-600 transition-colors">{eq.nombre}</p>
                                 {(eq.marca || eq.modelo) && <p className="text-xs text-slate-400">{[eq.marca, eq.modelo].filter(Boolean).join(" · ")}</p>}
                               </div>
-                            </div>
+                            </Link>
                           </td>
                           <td className="px-6 py-4 text-sm text-slate-600 font-mono">{eq.numeroSerie || "—"}</td>
                           <td className="px-6 py-4">
@@ -548,7 +548,6 @@ export default function InventarioGeneralPage() {
                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={() => setQrEquipo(eq)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg" title="Ver QR"><QrCode size={14} /></button>
                               <button onClick={() => setMantEquipo(eq)} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg" title="Mantenimientos"><Wrench size={14} /></button>
-                              <Link href={`/dashboard/equipos/${eq.id}`} className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg" title="Ver ficha completa"><ExternalLink size={14} /></Link>
                               <button onClick={() => openEdit(eq)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg" title="Editar"><Pencil size={14} /></button>
                             </div>
                           </td>

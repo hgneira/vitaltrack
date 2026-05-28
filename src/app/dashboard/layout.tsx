@@ -26,13 +26,13 @@ const ALL_NAV = [
     label: "Inicio",
     icon: LayoutDashboard,
     exact: true,
-    roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "RECEPCION", "LIMPIEZA", "MANTENIMIENTO", "FARMACIA", "URGENCIAS"],
+    roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "JEFE_BIOMEDICA", "RECEPCION", "MANTENIMIENTO", "URGENCIAS"],
   },
   {
     section: "Mi Cuenta",
     items: [
-      { href: "/dashboard/perfil", label: "Mi Perfil", icon: UserCircle, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "RECEPCION", "LIMPIEZA", "MANTENIMIENTO", "FARMACIA", "URGENCIAS"] },
-      { href: "/dashboard/chat",   label: "Chat",      icon: MessageSquare, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "RECEPCION", "LIMPIEZA", "MANTENIMIENTO", "FARMACIA", "URGENCIAS"] },
+      { href: "/dashboard/perfil", label: "Mi Perfil", icon: UserCircle, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "JEFE_BIOMEDICA", "RECEPCION", "MANTENIMIENTO", "URGENCIAS"] },
+      { href: "/dashboard/chat",   label: "Chat",      icon: MessageSquare, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "JEFE_BIOMEDICA", "RECEPCION", "MANTENIMIENTO", "URGENCIAS"] },
     ],
   },
   {
@@ -53,8 +53,8 @@ const ALL_NAV = [
   {
     section: "Ing. Biomédica",
     items: [
-      { href: "/dashboard/biomedica",            label: "Equipo Médico",    icon: Stethoscope,   roles: ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "MANTENIMIENTO"] },
-      { href: "/dashboard/biomedica/mis-tareas", label: "Mis tareas",       icon: ClipboardList, roles: ["INGENIERIA_BIOMEDICA", "MANTENIMIENTO"] },
+      { href: "/dashboard/biomedica",            label: "Equipo Médico",    icon: Stethoscope,   roles: ["ADMINISTRADOR", "JEFE_BIOMEDICA", "MANTENIMIENTO"] },
+      { href: "/dashboard/biomedica/mis-tareas", label: "Mis tareas",       icon: ClipboardList, roles: ["MANTENIMIENTO"] },
       { href: "/dashboard/biomedica/equipo",     label: "Mi Equipo",        icon: ClipboardList, roles: ["JEFE_BIOMEDICA"] },
       { href: "/dashboard/biomedica/equipo",     label: "Equipo Biomédica", icon: Users,         roles: ["ADMINISTRADOR"] },
     ],
@@ -62,40 +62,37 @@ const ALL_NAV = [
   {
     section: "Servicios",
     items: [
-      { href: "/dashboard/limpieza", label: "Limpieza / Mantto.", icon: SprayCan, roles: ["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"] },
-      { href: "/dashboard/farmacia", label: "Farmacia",           icon: Pill,     roles: ["ADMINISTRADOR", "FARMACIA"] },
+      { href: "/dashboard/limpieza", label: "Limpieza / Mantto.", icon: SprayCan, roles: ["ADMINISTRADOR", "MANTENIMIENTO"] },
+      { href: "/dashboard/farmacia", label: "Farmacia",           icon: Pill,     roles: ["ADMINISTRADOR"] },
     ],
   },
   {
     section: "Hospital",
     items: [
-      { href: "/dashboard/inventario-general", label: "Inventario General", icon: Building2, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "MANTENIMIENTO", "URGENCIAS"] },
-      { href: "/dashboard/normativas", label: "Normativas", icon: BookOpen, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "RECEPCION", "LIMPIEZA", "MANTENIMIENTO", "FARMACIA", "URGENCIAS"] },
+      { href: "/dashboard/inventario-general", label: "Inventario General", icon: Building2, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "JEFE_BIOMEDICA", "MANTENIMIENTO", "URGENCIAS"] },
+      { href: "/dashboard/normativas", label: "Normativas", icon: BookOpen, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "JEFE_BIOMEDICA", "RECEPCION", "MANTENIMIENTO", "URGENCIAS"] },
     ],
   },
   {
     section: "Urgencias",
     items: [
-      { href: "/dashboard/urgencias/inventario",    label: "Inventario",      icon: Activity,  roles: ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA"] },
-      { href: "/dashboard/urgencias/mapa",          label: "Mapa",            icon: MapIcon,   roles: ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA"] },
-      { href: "/dashboard/urgencias/mantenimiento", label: "Mantenimiento",   icon: Wrench,    roles: ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA"] },
-      { href: "/dashboard/urgencias/kpis",          label: "Indicadores KPI", icon: BarChart2, roles: ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"] },
-      { href: "/dashboard/urgencias/reportes",      label: "Reportes",        icon: FileText,  roles: ["ADMINISTRADOR", "URGENCIAS", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"] },
+      { href: "/dashboard/urgencias/inventario",    label: "Inventario",      icon: Activity,  roles: ["ADMINISTRADOR", "URGENCIAS"] },
+      { href: "/dashboard/urgencias/mapa",          label: "Mapa",            icon: MapIcon,   roles: ["ADMINISTRADOR", "URGENCIAS"] },
+      { href: "/dashboard/urgencias/mantenimiento", label: "Mantenimiento",   icon: Wrench,    roles: ["ADMINISTRADOR", "URGENCIAS"] },
+      { href: "/dashboard/urgencias/kpis",          label: "Indicadores KPI", icon: BarChart2, roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"] },
+      { href: "/dashboard/urgencias/reportes",      label: "Reportes",        icon: FileText,  roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"] },
     ],
   },
 ];
 
 const ROL_LABELS: Record<string, string> = {
-  ADMINISTRADOR:        "Administrador del Sistema",
-  MEDICO:               "Médico",
-  ENFERMERIA:           "Enfermería",
-  INGENIERIA_BIOMEDICA: "Ing. Biomédico",
-  JEFE_BIOMEDICA:       "Director / Jefe de Área",
-  RECEPCION:            "Recepción",
-  LIMPIEZA:             "Limpieza",
-  MANTENIMIENTO:        "Téc. Mantenimiento",
-  FARMACIA:             "Farmacia",
-  URGENCIAS:            "Urgencias",
+  ADMINISTRADOR:  "Administrador del Sistema",
+  MEDICO:         "Médico",
+  ENFERMERIA:     "Enfermería",
+  JEFE_BIOMEDICA: "Director / Jefe de Área",
+  RECEPCION:      "Recepción",
+  MANTENIMIENTO:  "Téc. Mantenimiento",
+  URGENCIAS:      "Urgencias",
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -244,7 +241,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })}
 
         {/* Alerts — visible to limpieza/mantenimiento */}
-        {["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol) && (
+        {["ADMINISTRADOR", "MANTENIMIENTO", "JEFE_BIOMEDICA"].includes(rol) && (
           <div>
             {!collapsed && (
               <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-1.5">

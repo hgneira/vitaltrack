@@ -35,7 +35,7 @@ export default function AreaDetallePage() {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ tipo: "LIMPIEZA", descripcion: "" });
+  const [form, setForm] = useState({ tipo: descripcion: "" });
   const [saving, setSaving] = useState(false);
 
   const loadRegistros = async () => {
@@ -65,7 +65,7 @@ export default function AreaDetallePage() {
     });
     await loadRegistros();
     setShowForm(false);
-    setForm({ tipo: "LIMPIEZA", descripcion: "" });
+    setForm({ tipo: descripcion: "" });
     setSaving(false);
   };
 
@@ -152,7 +152,7 @@ export default function AreaDetallePage() {
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Tipo *</label>
                 <select required value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} className={inputClass}>
-                  <option value="LIMPIEZA">Limpieza</option>
+                  <option value=>Limpieza</option>
                   <option value="MANTENIMIENTO_GENERAL">Mantenimiento general</option>
                   <option value="INSPECCION">Inspección</option>
                 </select>

@@ -79,7 +79,7 @@ const ESTADO_CFG: Record<string, { label: string; color: string; dot: string; ic
   EN_MANTENIMIENTO:  { label: "En mantenimiento",  color: "bg-amber-100 text-amber-700 ring-1 ring-amber-200",       dot: "bg-amber-400",  icon: Wrench },
   FUERA_DE_SERVICIO: { label: "Fuera de servicio", color: "bg-red-100 text-red-600 ring-1 ring-red-200",             dot: "bg-red-500",    icon: AlertTriangle },
 };
-const TIPO_MANT = ["PREVENTIVO", "CORRECTIVO", "CALIBRACION", "LIMPIEZA", "VERIFICACION"] as const;
+const TIPO_MANT = ["PREVENTIVO", "CORRECTIVO", "CALIBRACION", "VERIFICACION"] as const;
 const emptyForm = { nombre: "", marca: "", modelo: "", numeroSerie: "", fechaAdquisicion: "", ubicacion: "", estado: "ACTIVO", descripcion: "" };
 const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500";
 

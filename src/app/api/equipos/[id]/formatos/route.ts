@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-const ALLOWED = ["ADMINISTRADOR", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "URGENCIAS"];
+const ALLOWED = ["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS"];
 
 export async function GET(
   _: Request,

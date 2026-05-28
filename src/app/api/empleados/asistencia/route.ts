@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
     // JEFE_BIOMEDICA can only see INGENIERIA_BIOMEDICA and JEFE_BIOMEDICA records
     if ((session.user as any).rol === "JEFE_BIOMEDICA") {
-      where.user = { rol: { in: ["INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"] } };
+      where.user = { rol: { in: ["JEFE_BIOMEDICA"] } };
     }
 
     if (mes) {
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     // JEFE_BIOMEDICA can only register attendance for INGENIERIA_BIOMEDICA users
     if ((session.user as any).rol === "JEFE_BIOMEDICA") {
       const targetUser = await prisma.user.findUnique({ where: { id: body.userId }, select: { rol: true } });
-      if (!targetUser || !["INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(targetUser.rol)) {
+      if (!targetUser || !["JEFE_BIOMEDICA"].includes(targetUser.rol)) {
         return NextResponse.json({ error: "Solo puedes registrar asistencia de tu equipo biomédico" }, { status: 403 });
       }
     }

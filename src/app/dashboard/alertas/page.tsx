@@ -36,7 +36,7 @@ export default function AlertasPage() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("PENDIENTE");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ titulo: "", descripcion: "", areaId: "", tipo: "LIMPIEZA", prioridad: "MEDIA" });
+  const [form, setForm] = useState({ titulo: "", descripcion: "", areaId: "", tipo: prioridad: "MEDIA" });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -62,7 +62,7 @@ export default function AlertasPage() {
     await fetch("/api/alertas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
     await load();
     setShowForm(false);
-    setForm({ titulo: "", descripcion: "", areaId: "", tipo: "LIMPIEZA", prioridad: "MEDIA" });
+    setForm({ titulo: "", descripcion: "", areaId: "", tipo: prioridad: "MEDIA" });
     setSaving(false);
   };
 
@@ -172,7 +172,7 @@ export default function AlertasPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Tipo</label>
                   <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} className={inputClass}>
-                    <option value="LIMPIEZA">Limpieza</option>
+                    <option value=>Limpieza</option>
                     <option value="MANTENIMIENTO">Mantenimiento</option>
                     <option value="EMERGENCIA">Emergencia</option>
                   </select>

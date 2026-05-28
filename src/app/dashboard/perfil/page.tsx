@@ -83,7 +83,7 @@ export default function PerfilPage() {
   );
 
   const initials = `${perfil.nombre[0] ?? ""}${perfil.apellidos?.[0] ?? ""}`.toUpperCase();
-  const showProfessional = ["MEDICO", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(perfil.rol);
+  const showProfessional = ["MEDICO", "JEFE_BIOMEDICA"].includes(perfil.rol);
 
   return (
     <div className="h-full flex flex-col">

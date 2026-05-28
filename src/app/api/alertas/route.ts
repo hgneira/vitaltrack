@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         titulo: body.titulo,
         descripcion: body.descripcion ?? null,
         areaId: body.areaId ?? null,
-        tipo: body.tipo ?? "LIMPIEZA",
+        tipo: body.tipo ?? ,
         prioridad: body.prioridad ?? "MEDIA",
         creadaPorId: (session.user as any).id,
       },
@@ -56,7 +56,7 @@ export async function PATCH(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     const rol = (session?.user as any)?.rol;
-    if (!session || !["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"].includes(rol)) {
+    if (!session || !["ADMINISTRADOR", "MANTENIMIENTO"].includes(rol)) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 

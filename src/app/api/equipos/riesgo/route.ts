@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     const userId = (session.user as any).id;
     // Find any JEFE_BIOMEDICA or INGENIERIA_BIOMEDICA to assign
     const ingeniero = await prisma.user.findFirst({
-      where: { rol: { in: ["JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"] }, activo: true },
+      where: { rol: { in: ["JEFE_BIOMEDICA"] }, activo: true },
       select: { id: true },
     });
 

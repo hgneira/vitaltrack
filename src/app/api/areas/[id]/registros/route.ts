@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-const ALLOWED = ["ADMINISTRADOR", "LIMPIEZA", "MANTENIMIENTO"];
+const ALLOWED = ["ADMINISTRADOR", "MANTENIMIENTO"];
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       data: {
         areaId: id,
         userId: (session.user as any).id,
-        tipo: body.tipo ?? "LIMPIEZA",
+        tipo: body.tipo ?? ,
         descripcion: body.descripcion ?? null,
       },
       include: {
