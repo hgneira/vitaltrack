@@ -119,26 +119,7 @@ export async function GET() {
       }
     }
 
-    // ── EQUIPOS FUERA DE SERVICIO / EN MANTENIMIENTO ──────────────────────────
-    if (["ADMINISTRADOR", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"].includes(rol)) {
-      const equipos = await prisma.equipoMedico.findMany({
-        where: { estado: { in: ["EN_MANTENIMIENTO", "FUERA_DE_SERVICIO"] } },
-        select: { id: true, nombre: true, estado: true, updatedAt: true },
-        take: 10,
-      });
-
-      for (const e of equipos) {
-        notifs.push({
-          id: `equipo-${e.id}`,
-          tipo: "equipo",
-          titulo: e.estado === "FUERA_DE_SERVICIO" ? "Equipo fuera de servicio" : "Equipo en mantenimiento",
-          descripcion: e.nombre,
-          href: "/dashboard/biomedica",
-          fecha: e.updatedAt.toISOString(),
-          urgente: e.estado === "FUERA_DE_SERVICIO",
-        });
-      }
-    }
+    // Equipment section removed — covered by explicit alerts now
 
     // Sort: urgentes primero, luego por fecha descendente
     notifs.sort((a, b) => {

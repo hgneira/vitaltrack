@@ -62,11 +62,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       await prisma.equipoMedico.update({ where: { id }, data: { estado: body.nuevoEstado } });
     }
 
-    // Auto-complete pending tasks for this device when set back to ACTIVO
+    // Delete pending tasks for this device when set back to ACTIVO
     if (body.nuevoEstado === "ACTIVO") {
-      await prisma.tareaMantenimiento.updateMany({
-        where: { equipoId: id, estado: { in: ["PENDIENTE", "EN_PROCESO"] } },
-        data: { estado: "COMPLETADO" },
+      await prisma.tareaMantenimiento.deleteMany({
+        where: { equipoId: id, estado: { in: ["PENDIENTE", "EN_PROCESO"] }, mantenimientoOrigenId: null },
       }).catch(() => {});
     }
 

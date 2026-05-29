@@ -19,6 +19,14 @@ interface ChatToast {
   id: string; autor: string; contenido: string; canal: string; canalId: string; urgente: boolean;
 }
 
+interface AlertToast {
+  id: string; titulo: string; descripcion: string;
+}
+
+const PUSHER_KEY     = process.env.NEXT_PUBLIC_PUSHER_KEY ?? "";
+const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER ?? "us2";
+const BIOMEDICA_ROLES = ["INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "MANTENIMIENTO", "ADMINISTRADOR"];
+
 // Navigation items per role
 const ALL_NAV = [
   {
@@ -91,6 +99,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [foto, setFoto] = useState<string | null>(null);
   const [chatUnread, setChatUnread] = useState(0);
   const [chatToasts, setChatToasts] = useState<ChatToast[]>([]);
+  const [alertToasts, setAlertToasts] = useState<AlertToast[]>([]);
   const toastTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const addToast = (t: ChatToast) => {
@@ -102,6 +111,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setChatToasts(prev => prev.filter(t => t.id !== id));
     if (toastTimers.current[id]) { clearTimeout(toastTimers.current[id]); delete toastTimers.current[id]; }
   };
+
+  const addAlertToast = (t: AlertToast) => {
+    setAlertToasts(prev => prev.find(x => x.id === t.id) ? prev : [...prev, t]);
+    const timer = setTimeout(() => removeAlertToast(t.id), 8000);
+    toastTimers.current[`alert-${t.id}`] = timer;
+  };
+  const removeAlertToast = (id: string) => {
+    setAlertToasts(prev => prev.filter(t => t.id !== id));
+    const key = `alert-${id}`;
+    if (toastTimers.current[key]) { clearTimeout(toastTimers.current[key]); delete toastTimers.current[key]; }
+  };
+
+  // Biomedica real-time alert toasts
+  useEffect(() => {
+    if (!PUSHER_KEY || !BIOMEDICA_ROLES.includes(rol)) return;
+    let pusherInstance: any = null;
+    import("pusher-js").then(({ default: Pusher }) => {
+      pusherInstance = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+      const ch = pusherInstance.subscribe("alertas-biomedica");
+      ch.bind("nueva-alerta", (data: { id: string; titulo: string; descripcion: string }) => {
+        addAlertToast({ id: data.id, titulo: data.titulo, descripcion: data.descripcion });
+      });
+    });
+    return () => { if (pusherInstance) pusherInstance.disconnect(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rol]);
 
   // Desktop: collapsed state (persisted in localStorage)
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -310,6 +345,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         ))}
       </div>
+      {/* Biomedica alert toasts */}
+      {alertToasts.length > 0 && (
+        <div className="fixed top-16 right-4 z-50 space-y-2 pointer-events-none w-80" style={{ marginTop: chatToasts.length > 0 ? `${chatToasts.length * 88}px` : 0 }}>
+          {alertToasts.map(t => (
+            <div
+              key={t.id}
+              className="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-amber-600 border-amber-500 text-white animate-in slide-in-from-right duration-300"
+            >
+              <AlertTriangle size={16} className="shrink-0 mt-0.5 text-yellow-200" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wide opacity-80">⚡ Nueva alerta biomédica</p>
+                <p className="text-sm font-semibold truncate">{t.titulo}</p>
+                {t.descripcion && <p className="text-xs opacity-80 line-clamp-2">{t.descripcion}</p>}
+              </div>
+              <button onClick={() => removeAlertToast(t.id)} className="shrink-0 opacity-60 hover:opacity-100">
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div
