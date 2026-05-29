@@ -33,17 +33,21 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user }) {
       if (user) {
         token.rol = (user as any).rol;
         token.id = user.id;
       }
-      if (trigger === "update") {
+      // Always sync rol and nombre from DB so role changes take effect immediately
+      if (token.id) {
         const fresh = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { nombre: true },
+          select: { rol: true, nombre: true },
         });
-        if (fresh) token.name = fresh.nombre;
+        if (fresh) {
+          token.rol = fresh.rol;
+          token.name = fresh.nombre;
+        }
       }
       return token;
     },
