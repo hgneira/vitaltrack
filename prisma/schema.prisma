@@ -75,6 +75,7 @@ enum Rol {
   MANTENIMIENTO
   JEFE_BIOMEDICA
   URGENCIAS
+  INGENIERIA_BIOMEDICA
 }
 
 // ==================== PACIENTES ====================

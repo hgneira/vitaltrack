@@ -17,6 +17,7 @@ const ROL_LABELS: Record<string, string> = {
   ADMINISTRADOR: "Administrador", MEDICO: "Médico", ENFERMERIA: "Enfermería",
   JEFE_BIOMEDICA: "Director/Jefe", RECEPCION: "Recepción",
   MANTENIMIENTO: "Mantenimiento", URGENCIAS: "Urgencias",
+  INGENIERIA_BIOMEDICA: "Ing. Biomédico",
 };
 
 interface Canal { id: string; nombre: string; tipo: string; rolAcceso?: string | null; mensajes?: Mensaje[] }

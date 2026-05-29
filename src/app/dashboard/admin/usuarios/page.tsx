@@ -38,12 +38,13 @@ const ROL_CFG: Record<string, {
   RECEPCION:           { label: "Recepción",        color: "bg-amber-100  text-amber-700",  avatar: "bg-amber-500",  border: "border-amber-200",   icon: ConciergeBell },
   MANTENIMIENTO:       { label: "Mantenimiento",    color: "bg-slate-100  text-slate-700",  avatar: "bg-slate-500",  border: "border-slate-200",   icon: Wrench },
   URGENCIAS:           { label: "Urgencias",        color: "bg-red-100    text-red-700",    avatar: "bg-red-500",    border: "border-red-200",     icon: Activity },
+  INGENIERIA_BIOMEDICA:{ label: "Ing. Biomédico",   color: "bg-cyan-100   text-cyan-700",   avatar: "bg-cyan-600",   border: "border-cyan-200",    icon: FlaskConical },
 };
 
 // Display order for sections
 const ROL_ORDER = [
   "ADMINISTRADOR", "MEDICO", "ENFERMERIA",
-  "JEFE_BIOMEDICA",
+  "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA",
   "RECEPCION", "MANTENIMIENTO", "URGENCIAS",
 ];
 
