@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   UserCircle, Phone, Mail, MapPin, AlertTriangle, FileText,
   PhoneCall, ArrowLeft, Calendar, Pencil, X, Plus, Trash2,
   ChevronDown, ChevronUp, ClipboardList, Activity, Pill,
-  Stethoscope, Monitor, ShieldCheck, Shield,
+  Stethoscope, Monitor, ShieldCheck, Shield, BedDouble,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -26,8 +27,29 @@ interface Paciente {
   telefonoEmergencia?: string;
   curp?: string;
   numeroExpediente?: string;
+  areaAsignada?: string;
+  motivoConsulta?: string;
+  estadoAtencion?: string;
   consentimiento?: { aceptado: boolean; fechaAceptacion?: string; firmanteTipo?: string; firmanteNombre?: string };
 }
+
+const AREAS_URGENCIAS = [
+  "Cubículo de Triage 1", "Cubículo de Triage 2", "Cubículo de Triage 3",
+  "Sala de Choque",
+  "Cubículo de Observación General 1", "Cubículo de Observación General 2",
+  "Cubículo de Observación General 3", "Cubículo de Observación General 4",
+  "Cubículo de Observación General 5", "Cubículo de Observación General 6",
+  "Cubículo de Observación Pediátrica 1", "Cubículo de Observación Pediátrica 2",
+  "Cubículo de Aislamiento 1", "Cubículo de Aislamiento 2",
+  "Hidratación Pediátrica", "Hidratación Adultos",
+  "Sala de Espera",
+];
+
+const ESTADO_CFG: Record<string, { label: string; color: string }> = {
+  ESPERA:      { label: "En espera",   color: "bg-amber-100 text-amber-700 ring-amber-200" },
+  EN_ATENCION: { label: "En atención", color: "bg-cyan-100 text-cyan-700 ring-cyan-200" },
+  ALTA:        { label: "Alta",        color: "bg-emerald-100 text-emerald-700 ring-emerald-200" },
+};
 
 interface NotaSOAP {
   id: string;
@@ -142,6 +164,12 @@ export default function DetallePacientePage() {
   const searchParams = useSearchParams();
   const pacienteId = params.id as string;
 
+  const { data: session } = useSession();
+  const rol: string = (session?.user as any)?.rol ?? "";
+  const canSeeExpediente = ["ADMINISTRADOR", "MEDICO", "ENFERMERIA"].includes(rol);
+  const canChangeArea = ["ADMINISTRADOR", "MEDICO", "ENFERMERIA"].includes(rol);
+  const canEdit = ["ADMINISTRADOR", "RECEPCION"].includes(rol);
+
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [expediente, setExpediente] = useState<Expediente | null>(null);
   const [loadingPaciente, setLoadingPaciente] = useState(true);
@@ -196,6 +224,11 @@ export default function DetallePacientePage() {
   const [showConsentForm, setShowConsentForm] = useState(false);
   const [consentForm, setConsentForm] = useState({ firmanteTipo: "PACIENTE", firmanteNombre: "", firmanteRelacion: "", accepted: false });
   const [savingConsent, setSavingConsent] = useState(false);
+
+  // Area modal
+  const [showAreaModal, setShowAreaModal] = useState(false);
+  const [areaForm, setAreaForm] = useState({ area: "", estado: "" });
+  const [savingArea, setSavingArea] = useState(false);
 
   // ── Load data ────────────────────────────────────────────────────────────────
 
@@ -411,6 +444,23 @@ export default function DetallePacientePage() {
     setSavingConsent(false);
   };
 
+  const openAreaModal = () => {
+    setAreaForm({ area: paciente?.areaAsignada ?? AREAS_URGENCIAS[0], estado: paciente?.estadoAtencion ?? "ESPERA" });
+    setShowAreaModal(true);
+  };
+
+  const handleSaveArea = async () => {
+    setSavingArea(true);
+    await fetch(`/api/pacientes/${pacienteId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ areaAsignada: areaForm.area, estadoAtencion: areaForm.estado }),
+    });
+    await loadPaciente();
+    setShowAreaModal(false);
+    setSavingArea(false);
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   if (loadingPaciente) {
@@ -449,9 +499,11 @@ export default function DetallePacientePage() {
         <button onClick={() => router.push("/dashboard/pacientes")} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900">
           <ArrowLeft size={15} /> Pacientes
         </button>
-        <button onClick={() => openEdit(paciente)} className="flex items-center gap-2 border border-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-slate-50">
-          <Pencil size={14} /> Editar
-        </button>
+        {canEdit && (
+          <button onClick={() => openEdit(paciente)} className="flex items-center gap-2 border border-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-slate-50">
+            <Pencil size={14} /> Editar
+          </button>
+        )}
       </header>
 
       <div className="flex-1 overflow-auto p-6">
@@ -496,6 +548,34 @@ export default function DetallePacientePage() {
                     <span className="font-mono">{paciente.curp}</span>
                   </p>
                 )}
+                {/* Area & estado row */}
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  {paciente.estadoAtencion && (() => {
+                    const cfg = ESTADO_CFG[paciente.estadoAtencion!] ?? ESTADO_CFG.ESPERA;
+                    return (
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ${cfg.color}`}>
+                        {cfg.label}
+                      </span>
+                    );
+                  })()}
+                  {paciente.areaAsignada && (
+                    <span className="flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
+                      <MapPin size={11} className="text-slate-400" /> {paciente.areaAsignada}
+                    </span>
+                  )}
+                  {canChangeArea && (
+                    <button onClick={openAreaModal}
+                      className="flex items-center gap-1 text-xs text-cyan-600 hover:text-cyan-800 font-medium px-2.5 py-1 rounded-full hover:bg-cyan-50 border border-cyan-200">
+                      <BedDouble size={11} /> Cambiar área
+                    </button>
+                  )}
+                </div>
+                {paciente.motivoConsulta && (
+                  <p className="text-xs text-slate-500 mt-2">
+                    <span className="font-medium text-slate-400 uppercase tracking-wide mr-1">Motivo:</span>
+                    {paciente.motivoConsulta}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -529,6 +609,13 @@ export default function DetallePacientePage() {
           )}
 
           {/* Expediente — tabbed */}
+          {!canSeeExpediente ? (
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-10 text-center">
+              <ClipboardList size={36} className="mx-auto text-slate-300 mb-3" />
+              <p className="font-medium text-slate-600">Expediente clínico restringido</p>
+              <p className="text-sm text-slate-400 mt-1">Solo médicos y enfermeras pueden acceder al expediente clínico</p>
+            </div>
+          ) : (
           <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -816,8 +903,50 @@ export default function DetallePacientePage() {
               </>
             )}
           </div>
+          )}
         </div>
       </div>
+
+      {/* ── Area modal ─────────────────────────────────────────────────────── */}
+      {showAreaModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BedDouble size={17} className="text-cyan-600" />
+                <h2 className="font-semibold text-slate-900">Cambiar área y estado</h2>
+              </div>
+              <button onClick={() => setShowAreaModal(false)}><X size={18} className="text-slate-400" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Estado de atención</label>
+                <select value={areaForm.estado} onChange={e => setAreaForm({ ...areaForm, estado: e.target.value })}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                  <option value="ESPERA">En espera</option>
+                  <option value="EN_ATENCION">En atención</option>
+                  <option value="ALTA">Alta</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Área asignada</label>
+                <select value={areaForm.area} onChange={e => setAreaForm({ ...areaForm, area: e.target.value })}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                  {AREAS_URGENCIAS.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={handleSaveArea} disabled={savingArea}
+                  className="flex-1 bg-cyan-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-cyan-700 disabled:opacity-50">
+                  {savingArea ? "Guardando…" : "Guardar"}
+                </button>
+                <button onClick={() => setShowAreaModal(false)}
+                  className="px-4 py-2.5 rounded-lg text-sm text-slate-600 bg-slate-100 hover:bg-slate-200">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Edit patient modal ─────────────────────────────────────────────── */}
       {showEdit && (

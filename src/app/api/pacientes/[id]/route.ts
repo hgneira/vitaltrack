@@ -6,7 +6,7 @@ import { encryptField, decryptField } from "@/lib/crypto";
 import { logAuditoria } from "@/lib/auditoria";
 
 const ROLES_LECTURA = ["MEDICO", "ENFERMERIA", "RECEPCION", "ADMINISTRADOR", "URGENCIAS"];
-const ROLES_ESCRITURA = ["MEDICO", "RECEPCION", "ADMINISTRADOR", "URGENCIAS"];
+const ROLES_ESCRITURA = ["MEDICO", "ENFERMERIA", "RECEPCION", "ADMINISTRADOR", "URGENCIAS"];
 
 export async function GET(
   request: Request,
@@ -63,18 +63,21 @@ export async function PATCH(
     const paciente = await prisma.paciente.update({
       where: { id },
       data: {
-        nombre: body.nombre,
-        apellidos: body.apellidos,
-        fechaNacimiento: body.fechaNacimiento ? new Date(body.fechaNacimiento) : undefined,
-        sexo: body.sexo,
-        telefono: body.telefono || null,
-        email: body.email || null,
-        direccion: body.direccion || null,
-        alergias: body.alergias || null,
-        antecedentes: body.antecedentes || null,
-        contactoEmergencia: body.contactoEmergencia || null,
-        telefonoEmergencia: body.telefonoEmergencia || null,
-        curp: curpRaw ? encryptField(curpRaw.toUpperCase()) : undefined,
+        ...(body.nombre !== undefined && { nombre: body.nombre }),
+        ...(body.apellidos !== undefined && { apellidos: body.apellidos }),
+        ...(body.fechaNacimiento !== undefined && { fechaNacimiento: new Date(body.fechaNacimiento) }),
+        ...(body.sexo !== undefined && { sexo: body.sexo }),
+        ...(body.telefono !== undefined && { telefono: body.telefono || null }),
+        ...(body.email !== undefined && { email: body.email || null }),
+        ...(body.direccion !== undefined && { direccion: body.direccion || null }),
+        ...(body.alergias !== undefined && { alergias: body.alergias || null }),
+        ...(body.antecedentes !== undefined && { antecedentes: body.antecedentes || null }),
+        ...(body.contactoEmergencia !== undefined && { contactoEmergencia: body.contactoEmergencia || null }),
+        ...(body.telefonoEmergencia !== undefined && { telefonoEmergencia: body.telefonoEmergencia || null }),
+        ...(curpRaw && { curp: encryptField(curpRaw.toUpperCase()) }),
+        ...(body.areaAsignada !== undefined && { areaAsignada: body.areaAsignada || null }),
+        ...(body.motivoConsulta !== undefined && { motivoConsulta: body.motivoConsulta || null }),
+        ...(body.estadoAtencion !== undefined && { estadoAtencion: body.estadoAtencion }),
       },
     });
 

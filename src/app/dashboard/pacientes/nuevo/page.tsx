@@ -151,6 +151,62 @@ function ConsentModal({
   );
 }
 
+// ── Area assignment modal ──────────────────────────────────────────────────────
+const AREAS_URGENCIAS = [
+  "Cubículo de Triage 1", "Cubículo de Triage 2", "Cubículo de Triage 3",
+  "Sala de Choque",
+  "Cubículo de Observación General 1", "Cubículo de Observación General 2",
+  "Cubículo de Observación General 3", "Cubículo de Observación General 4",
+  "Cubículo de Observación General 5", "Cubículo de Observación General 6",
+  "Cubículo de Observación Pediátrica 1", "Cubículo de Observación Pediátrica 2",
+  "Cubículo de Aislamiento 1", "Cubículo de Aislamiento 2",
+  "Hidratación Pediátrica", "Hidratación Adultos",
+  "Sala de Espera",
+];
+
+function AreaModal({ onConfirm }: { onConfirm: (area: string, motivo: string) => void }) {
+  const [area, setArea] = useState("Cubículo de Triage 1");
+  const [motivo, setMotivo] = useState("");
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+          <span className="text-lg">🏥</span>
+          <h2 className="font-semibold text-slate-900">Asignar área de atención</h2>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Motivo de consulta <span className="text-red-500">*</span></label>
+            <textarea
+              value={motivo}
+              onChange={e => setMotivo(e.target.value)}
+              rows={2}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              placeholder="Describe brevemente el motivo de consulta…"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Área asignada</label>
+            <select value={area} onChange={e => setArea(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
+              {AREAS_URGENCIAS.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="px-6 pb-6">
+          <button
+            disabled={!motivo.trim()}
+            onClick={() => onConfirm(area, motivo)}
+            className="w-full bg-cyan-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-cyan-700 disabled:opacity-40"
+          >
+            Registrar paciente
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function NuevoPacientePage() {
@@ -158,6 +214,7 @@ export default function NuevoPacientePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showConsent, setShowConsent] = useState(false);
+  const [showArea, setShowArea] = useState(false);
   const [consentData, setConsentData] = useState<{ firmanteTipo: string; firmanteNombre: string; firmanteRelacion: string } | null>(null);
   const [pendingData, setPendingData] = useState<any>(null);
 
@@ -181,21 +238,27 @@ export default function NuevoPacientePage() {
       telefonoEmergencia: (form.elements.namedItem("telefonoEmergencia") as HTMLInputElement).value,
     };
 
-    // Show consent modal before creating
+    // Step 1: consent
     setPendingData(data);
     setShowConsent(true);
   };
 
-  const handleConsentAccepted = async (consent: { firmanteTipo: string; firmanteNombre: string; firmanteRelacion: string }) => {
+  const handleConsentAccepted = (consent: { firmanteTipo: string; firmanteNombre: string; firmanteRelacion: string }) => {
     setConsentData(consent);
     setShowConsent(false);
+    // Step 2: area assignment
+    setShowArea(true);
+  };
+
+  const handleAreaConfirmed = async (area: string, motivo: string) => {
+    setShowArea(false);
     setLoading(true);
 
     // Create patient
     const res = await fetch("/api/pacientes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(pendingData),
+      body: JSON.stringify({ ...pendingData, areaAsignada: area, motivoConsulta: motivo }),
     });
 
     if (res.ok) {
@@ -206,9 +269,9 @@ export default function NuevoPacientePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           aceptado: true,
-          firmanteTipo: consent.firmanteTipo,
-          firmanteNombre: consent.firmanteNombre,
-          firmanteRelacion: consent.firmanteRelacion,
+          firmanteTipo: consentData!.firmanteTipo,
+          firmanteNombre: consentData!.firmanteNombre,
+          firmanteRelacion: consentData!.firmanteRelacion,
         }),
       });
       router.push("/dashboard/pacientes");
@@ -354,6 +417,7 @@ export default function NuevoPacientePage() {
           onCancel={() => { setShowConsent(false); setLoading(false); }}
         />
       )}
+      {showArea && <AreaModal onConfirm={handleAreaConfirmed} />}
     </div>
   );
 }

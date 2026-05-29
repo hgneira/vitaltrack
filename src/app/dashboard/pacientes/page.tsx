@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, Plus, Search, ArrowRight, UserCircle, Pencil, Trash2, X, AlertTriangle } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Users, Plus, Search, ArrowRight, UserCircle, Pencil, Trash2, AlertTriangle, MapPin } from "lucide-react";
 
 interface Paciente {
   id: string;
@@ -11,10 +12,25 @@ interface Paciente {
   sexo: string;
   telefono?: string;
   email?: string;
+  areaAsignada?: string;
+  motivoConsulta?: string;
+  estadoAtencion?: string;
 }
+
+const ESTADO_CFG: Record<string, { label: string; color: string }> = {
+  ESPERA:     { label: "En espera",   color: "bg-amber-100 text-amber-700" },
+  EN_ATENCION:{ label: "En atención", color: "bg-cyan-100 text-cyan-700" },
+  ALTA:       { label: "Alta",        color: "bg-emerald-100 text-emerald-700" },
+};
 
 export default function PacientesPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const rol: string = (session?.user as any)?.rol ?? "";
+  const canRegister = ["ADMINISTRADOR", "RECEPCION"].includes(rol);
+  const canSeeExpediente = ["ADMINISTRADOR", "MEDICO", "ENFERMERIA"].includes(rol);
+  const canDelete = rol === "ADMINISTRADOR";
+
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -33,6 +49,7 @@ export default function PacientesPage() {
     return (
       p.nombre.toLowerCase().includes(q) ||
       p.apellidos.toLowerCase().includes(q) ||
+      (p.areaAsignada ?? "").toLowerCase().includes(q) ||
       (p.email ?? "").toLowerCase().includes(q)
     );
   });
@@ -48,7 +65,6 @@ export default function PacientesPage() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
       <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Users size={20} className="text-slate-400" />
@@ -59,16 +75,16 @@ export default function PacientesPage() {
             </span>
           )}
         </div>
-        <button
-          onClick={() => router.push("/dashboard/pacientes/nuevo")}
-          className="flex items-center gap-2 bg-cyan-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors"
-        >
-          <Plus size={15} />
-          Nuevo paciente
-        </button>
+        {canRegister && (
+          <button
+            onClick={() => router.push("/dashboard/pacientes/nuevo")}
+            className="flex items-center gap-2 bg-cyan-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors"
+          >
+            <Plus size={15} /> Registrar paciente
+          </button>
+        )}
       </header>
 
-      {/* Content */}
       <div className="flex-1 overflow-auto p-8">
         <div className="relative mb-5 max-w-sm">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -76,8 +92,8 @@ export default function PacientesPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre o correo…"
-            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            placeholder="Buscar por nombre, área…"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
         </div>
 
@@ -91,13 +107,10 @@ export default function PacientesPage() {
             <p className="font-medium text-slate-700">
               {search ? "Sin resultados" : "No hay pacientes registrados"}
             </p>
-            <p className="text-sm text-slate-400 mt-1">
-              {search ? `Ningún paciente coincide con "${search}"` : "Empieza registrando el primer paciente"}
-            </p>
-            {!search && (
+            {!search && canRegister && (
               <button
                 onClick={() => router.push("/dashboard/pacientes/nuevo")}
-                className="mt-4 bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700 transition-colors"
+                className="mt-4 bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700"
               >
                 Registrar primer paciente
               </button>
@@ -109,59 +122,83 @@ export default function PacientesPage() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Paciente</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Sexo</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Teléfono</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Área asignada</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Motivo</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-semibold shrink-0">
-                          {p.nombre[0]}{p.apellidos[0]}
+                {filtered.map((p) => {
+                  const estadoCfg = ESTADO_CFG[p.estadoAtencion ?? "ESPERA"] ?? ESTADO_CFG.ESPERA;
+                  return (
+                    <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                            {p.nombre[0]}{p.apellidos[0]}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900 text-sm">{p.nombre} {p.apellidos}</p>
+                            <p className="text-xs text-slate-400">{p.sexo}</p>
+                          </div>
                         </div>
-                        <span className="font-medium text-slate-900 text-sm">{p.nombre} {p.apellidos}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{p.sexo}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{p.telefono || "—"}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{p.email || "—"}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => router.push(`/dashboard/pacientes/${p.id}`)}
-                          className="flex items-center gap-1 text-sm text-cyan-600 hover:text-cyan-800 font-medium px-2 py-1 rounded-lg hover:bg-cyan-50"
-                        >
-                          Ver <ArrowRight size={13} />
-                        </button>
-                        <button
-                          onClick={() => router.push(`/dashboard/pacientes/${p.id}?edit=1`)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                          title="Editar"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(p)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
-                          title="Eliminar"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        {p.areaAsignada ? (
+                          <div className="flex items-center gap-1.5 text-sm text-slate-700">
+                            <MapPin size={12} className="text-slate-400 shrink-0" />
+                            {p.areaAsignada}
+                          </div>
+                        ) : <span className="text-slate-400 text-sm">—</span>}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600 max-w-[180px] truncate">
+                        {p.motivoConsulta || "—"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${estadoCfg.color}`}>
+                          {estadoCfg.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {canSeeExpediente && (
+                            <button
+                              onClick={() => router.push(`/dashboard/pacientes/${p.id}`)}
+                              className="flex items-center gap-1 text-sm text-cyan-600 hover:text-cyan-800 font-medium px-2 py-1 rounded-lg hover:bg-cyan-50"
+                            >
+                              Ver <ArrowRight size={13} />
+                            </button>
+                          )}
+                          {canRegister && (
+                            <button
+                              onClick={() => router.push(`/dashboard/pacientes/${p.id}?edit=1`)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                              title="Editar"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => setDeleteTarget(p)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                              title="Eliminar"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Delete confirmation modal */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
@@ -176,21 +213,15 @@ export default function PacientesPage() {
             </div>
             <p className="text-sm text-slate-700 bg-slate-50 rounded-lg px-4 py-3 mb-5">
               Se eliminará permanentemente a{" "}
-              <span className="font-semibold">{deleteTarget.nombre} {deleteTarget.apellidos}</span>{" "}
-              junto con sus citas y expediente clínico.
+              <span className="font-semibold">{deleteTarget.nombre} {deleteTarget.apellidos}</span>.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-              >
+              <button onClick={handleDelete} disabled={deleting}
+                className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50">
                 {deleting ? "Eliminando…" : "Sí, eliminar"}
               </button>
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-200"
-              >
+              <button onClick={() => setDeleteTarget(null)}
+                className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-200">
                 Cancelar
               </button>
             </div>

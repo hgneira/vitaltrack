@@ -95,6 +95,9 @@ model Paciente {
   curp               String?
   numeroExpediente   String?  @unique
   medicoId           String?
+  areaAsignada       String?
+  motivoConsulta     String?
+  estadoAtencion     String?  @default("ESPERA")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

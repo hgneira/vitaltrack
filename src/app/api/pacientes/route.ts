@@ -91,6 +91,9 @@ export async function POST(request: Request) {
         curp: curpEncrypted,
         numeroExpediente,
         medicoId: rol === "MEDICO" ? userId : null,
+        areaAsignada: body.areaAsignada ?? null,
+        motivoConsulta: body.motivoConsulta ?? null,
+        estadoAtencion: body.estadoAtencion ?? "ESPERA",
       },
     });
 
