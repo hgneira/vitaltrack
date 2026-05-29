@@ -56,13 +56,6 @@ const ALL_NAV = [
     ],
   },
   {
-    section: "Servicios",
-    items: [
-      { href: "/dashboard/limpieza", label: "Limpieza / Mantto.", icon: SprayCan, roles: ["ADMINISTRADOR", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA"] },
-      { href: "/dashboard/farmacia", label: "Farmacia",           icon: Pill,     roles: ["ADMINISTRADOR"] },
-    ],
-  },
-  {
     section: "Hospital",
     items: [
       { href: "/dashboard/inventario-general", label: "Inventario General", icon: Building2, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "JEFE_BIOMEDICA", "MANTENIMIENTO", "URGENCIAS", "INGENIERIA_BIOMEDICA"] },
