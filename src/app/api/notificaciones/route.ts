@@ -115,7 +115,7 @@ export async function GET() {
           tipo: "tarea",
           titulo: t.estado === "PENDIENTE" ? "Tarea pendiente" : "Tarea en proceso",
           descripcion: `${t.equipo.nombre} · ${t.descripcion ?? t.tipo.toLowerCase()}`,
-          href: rol ===  ? "/dashboard/biomedica/mis-tareas" : "/dashboard/biomedica",
+          href: rol === "MANTENIMIENTO" ? "/dashboard/biomedica/mis-tareas" : "/dashboard/biomedica",
           fecha: t.fecha.toISOString(),
           urgente: t.fecha < today && t.estado === "PENDIENTE",
         });
