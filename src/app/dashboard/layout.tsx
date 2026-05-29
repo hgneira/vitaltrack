@@ -69,7 +69,6 @@ const ALL_NAV = [
       { href: "/dashboard/urgencias/mapa",          label: "Mapa",            icon: MapIcon,   roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"] },
       { href: "/dashboard/urgencias/mantenimiento", label: "Mantenimiento",   icon: Wrench,    roles: ["ADMINISTRADOR", "URGENCIAS"] },
       { href: "/dashboard/urgencias/kpis",          label: "Indicadores KPI", icon: BarChart2, roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"] },
-      { href: "/dashboard/urgencias/reportes",      label: "Reportes",        icon: FileText,  roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"] },
     ],
   },
 ];
