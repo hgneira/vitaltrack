@@ -15,9 +15,8 @@ const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER ?? "us2";
 
 const ROL_LABELS: Record<string, string> = {
   ADMINISTRADOR: "Administrador", MEDICO: "Médico", ENFERMERIA: "Enfermería",
-  INGENIERIA_BIOMEDICA: "Ing. Biomédico", JEFE_BIOMEDICA: "Director/Jefe",
-  RECEPCION: "Recepción", LIMPIEZA: "Limpieza", MANTENIMIENTO: "Mantenimiento",
-  FARMACIA: "Farmacia", URGENCIAS: "Urgencias",
+  JEFE_BIOMEDICA: "Director/Jefe", RECEPCION: "Recepción",
+  MANTENIMIENTO: "Mantenimiento", URGENCIAS: "Urgencias",
 };
 
 interface Canal { id: string; nombre: string; tipo: string; rolAcceso?: string | null; mensajes?: Mensaje[] }

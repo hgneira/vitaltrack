@@ -15,8 +15,6 @@ export async function GET() {
         OR: [
           { tipo: "GENERAL" },
           { tipo: "ROL", rolAcceso: rol },
-          { tipo: "ROL", rolAcceso: "ADMINISTRADOR" }, // admin sees all via separate logic
-          // DMs involving this user
           { tipo: "DIRECTO", rolAcceso: { contains: userId } },
         ],
       },
