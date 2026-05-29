@@ -1044,18 +1044,24 @@ export default function DeviceDetailPage() {
                 <div className="px-5 py-8 text-center text-slate-400 text-sm">Sin movimientos registrados</div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {movimientos.map(mv => (
+                  {movimientos.map(mv => {
+                    const isManual = mv.readerId === "MANUAL";
+                    return (
                     <div key={mv.id} className="px-5 py-3.5 flex items-center gap-4">
-                      <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
-                        <Activity size={12} className="text-cyan-600" />
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isManual ? "bg-violet-50" : "bg-cyan-50"}`}>
+                        <Activity size={12} className={isManual ? "text-violet-600" : "text-cyan-600"} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800">{mv.areaDestino}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-slate-800">{mv.areaDestino}</p>
+                          {isManual && <span className="text-xs bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded-full font-medium">Manual</span>}
+                        </div>
                         {mv.areaOrigen && <p className="text-xs text-slate-400">Desde: {mv.areaOrigen}</p>}
                       </div>
                       <span className="text-xs text-slate-400 shrink-0">{mv.timestamp}</span>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

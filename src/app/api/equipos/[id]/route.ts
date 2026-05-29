@@ -34,6 +34,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { id } = await params;
     const body = await request.json();
 
+    // Fetch current ubicacion before update to detect changes
+    const current = await prisma.equipoMedico.findUnique({ where: { id }, select: { ubicacion: true } });
+
     const equipo = await prisma.equipoMedico.update({
       where: { id },
       data: {
@@ -48,6 +51,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         ...(body.tagUid !== undefined ? { tagUid: body.tagUid || null } : {}),
       },
     });
+
+    // If ubicacion changed, log a manual movement record
+    const nuevaUbicacion = body.ubicacion ?? null;
+    if (nuevaUbicacion && current && current.ubicacion !== nuevaUbicacion) {
+      await prisma.registroRFID.create({
+        data: {
+          equipoId: id,
+          readerId: "MANUAL",
+          areaOrigen: current.ubicacion ?? undefined,
+          areaDestino: nuevaUbicacion,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
     return NextResponse.json(equipo);
   } catch {
     return NextResponse.json({ error: "Error al actualizar equipo" }, { status: 500 });
