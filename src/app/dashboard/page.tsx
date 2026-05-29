@@ -58,13 +58,13 @@ export default function DashboardPage() {
         fetch("/api/citas").then((r) => r.json()).then((d) => setCitas(Array.isArray(d) ? d : [])),
       );
     }
-    if (["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS"].includes(rol)) {
+    if (["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"].includes(rol)) {
       fetches.push(fetch("/api/equipos").then((r) => r.json()).then((d) => setEquipos(Array.isArray(d) ? d : [])));
     }
     if (["ADMINISTRADOR"].includes(rol)) {
       fetches.push(fetch("/api/medicamentos").then((r) => r.json()).then((d) => setMedicamentos(Array.isArray(d) ? d : [])));
     }
-    if (["ADMINISTRADOR", "MANTENIMIENTO"].includes(rol)) {
+    if (["ADMINISTRADOR", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol)) {
       fetches.push(fetch("/api/alertas?estado=PENDIENTE").then((r) => r.json()).then((d) => setAlertas(Array.isArray(d) ? d : [])));
     }
 
@@ -109,8 +109,17 @@ export default function DashboardPage() {
   if (["ADMINISTRADOR"].includes(rol)) {
     stats.push({ label: "Medicamentos (bajo stock)", value: medsBajoStock, icon: Pill, color: "bg-orange-500", bg: "bg-orange-50", text: "text-orange-600", ring: "ring-orange-100" });
   }
-  if (["ADMINISTRADOR", "MANTENIMIENTO"].includes(rol)) {
+  if (["ADMINISTRADOR", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol)) {
     stats.push({ label: "Alertas pendientes", value: (alertas as unknown[]).length, icon: Bell, color: "bg-red-500", bg: "bg-red-50", text: "text-red-600", ring: "ring-red-100" });
+  }
+  if (["INGENIERIA_BIOMEDICA", "MANTENIMIENTO"].includes(rol)) {
+    const enMant = equipos.filter((e) => e.estado === "EN_MANTENIMIENTO").length;
+    const fuera  = equipos.filter((e) => e.estado === "FUERA_DE_SERVICIO").length;
+    stats.push(
+      { label: "Total equipos",      value: equipos.length, icon: Stethoscope,  color: "bg-blue-500",    bg: "bg-blue-50",    text: "text-blue-600",    ring: "ring-blue-100" },
+      { label: "En mantenimiento",   value: enMant,         icon: Wrench,        color: "bg-amber-500",   bg: "bg-amber-50",   text: "text-amber-600",   ring: "ring-amber-100" },
+      { label: "Fuera de servicio",  value: fuera,          icon: AlertTriangle, color: "bg-red-500",     bg: "bg-red-50",     text: "text-red-600",     ring: "ring-red-100" },
+    );
   }
 
   // Quick actions by role
@@ -141,7 +150,14 @@ export default function DashboardPage() {
       { label: "Inventario",       desc: "Ver dispositivos y estado",       href: "/dashboard/urgencias/inventario",    icon: Activity,  color: "bg-red-50 text-red-600" },
       { label: "Mantenimiento",    desc: "Historial y alertas",              href: "/dashboard/urgencias/mantenimiento", icon: Wrench,    color: "bg-amber-50 text-amber-600" },
       { label: "Indicadores KPI",  desc: "Disponibilidad e incidencias",     href: "/dashboard/urgencias/kpis",          icon: Stethoscope, color: "bg-blue-50 text-blue-600" },
-      { label: "Reportes",         desc: "Estado por área y alertas",        href: "/dashboard/urgencias/reportes",      icon: Pill,      color: "bg-violet-50 text-violet-600" },
+    );
+  }
+  if (["INGENIERIA_BIOMEDICA", "MANTENIMIENTO"].includes(rol)) {
+    actions.push(
+      { label: "Inventario General",     desc: "Equipos de todo el hospital",  href: "/dashboard/inventario-general",       icon: Stethoscope, color: "bg-blue-50 text-blue-600" },
+      { label: "Inventario Urgencias",   desc: "Dispositivos en urgencias",    href: "/dashboard/urgencias/inventario",     icon: Activity,    color: "bg-red-50 text-red-600" },
+      { label: "Mis tareas",             desc: "Órdenes y tareas asignadas",   href: "/dashboard/biomedica/mis-tareas",     icon: Wrench,      color: "bg-amber-50 text-amber-600" },
+      { label: "Alertas",                desc: "Revisar alertas pendientes",   href: "/dashboard/alertas",                  icon: Bell,        color: "bg-orange-50 text-orange-600" },
     );
   }
 
