@@ -65,8 +65,8 @@ const ALL_NAV = [
   {
     section: "Urgencias",
     items: [
-      { href: "/dashboard/urgencias/inventario",    label: "Inventario",      icon: Activity,  roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"] },
-      { href: "/dashboard/urgencias/mapa",          label: "Mapa",            icon: MapIcon,   roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"] },
+      { href: "/dashboard/urgencias/inventario",    label: "Inventario",      icon: Activity,  roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"] },
+      { href: "/dashboard/urgencias/mapa",          label: "Mapa",            icon: MapIcon,   roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"] },
       { href: "/dashboard/urgencias/mantenimiento", label: "Mantenimiento",   icon: Wrench,    roles: ["ADMINISTRADOR", "URGENCIAS"] },
       { href: "/dashboard/urgencias/kpis",          label: "Indicadores KPI", icon: BarChart2, roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"] },
     ],
@@ -230,7 +230,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })}
 
         {/* Alerts — visible to limpieza/mantenimiento */}
-        {["ADMINISTRADOR", "MANTENIMIENTO", "JEFE_BIOMEDICA"].includes(rol) && (
+        {["ADMINISTRADOR", "MANTENIMIENTO", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"].includes(rol) && (
           <div>
             {!collapsed && (
               <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-1.5">

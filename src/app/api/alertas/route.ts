@@ -56,7 +56,7 @@ export async function PATCH(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     const rol = (session?.user as any)?.rol;
-    if (!session || !["ADMINISTRADOR", "MANTENIMIENTO"].includes(rol)) {
+    if (!session || !["ADMINISTRADOR", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol)) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
