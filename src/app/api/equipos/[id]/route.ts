@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { pusherServer, isPusherConfigured } from "@/lib/pusher-server";
 
 const ALLOWED = ["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"];
 
@@ -64,6 +65,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           timestamp: new Date().toISOString(),
         },
       });
+    }
+
+    // If estado changed to FUERA_DE_SERVICIO, create alert and notify in real-time
+    if (body.estado === "FUERA_DE_SERVICIO") {
+      const alerta = await prisma.alerta.create({
+        data: {
+          titulo: `Equipo fuera de servicio: ${equipo.nombre}`,
+          descripcion: `El equipo "${equipo.nombre}"${equipo.ubicacion ? ` (${equipo.ubicacion})` : ""} fue marcado como fuera de servicio. Requiere atención del área biomédica.`,
+          tipo: "MANTENIMIENTO",
+          prioridad: "ALTA",
+          creadaPorId: (session.user as any).id,
+        },
+      });
+      if (isPusherConfigured) {
+        await pusherServer.trigger("alertas-biomedica", "nueva-alerta", {
+          id: alerta.id, titulo: alerta.titulo, descripcion: alerta.descripcion,
+        }).catch(() => {});
+      }
     }
 
     return NextResponse.json(equipo);

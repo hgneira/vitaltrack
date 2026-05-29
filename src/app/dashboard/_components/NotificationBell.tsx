@@ -2,10 +2,15 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Bell, CalendarCheck, AlertTriangle, Pill, Wrench, Stethoscope, X, CheckCheck, Clock,
 } from "lucide-react";
 import type { Notif } from "@/app/api/notificaciones/route";
+
+const PUSHER_KEY     = process.env.NEXT_PUBLIC_PUSHER_KEY ?? "";
+const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER ?? "us2";
+const BIOMEDICA_ROLES = ["INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA", "MANTENIMIENTO", "ADMINISTRADOR"];
 
 const TIPO_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
   cita:        { icon: CalendarCheck, color: "text-cyan-600",   bg: "bg-cyan-50" },
@@ -35,6 +40,8 @@ type Tab = "nuevas" | "historial";
 
 export default function NotificationBell() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const rol: string = (session?.user as any)?.rol ?? "";
   const [open,      setOpen]      = useState(false);
   const [tab,       setTab]       = useState<Tab>("nuevas");
   const [notifs,    setNotifs]    = useState<Notif[]>([]);
@@ -55,9 +62,21 @@ export default function NotificationBell() {
 
   useEffect(() => {
     load();
-    const id = setInterval(load, 60_000);
+    const id = setInterval(load, 30_000);
     return () => clearInterval(id);
   }, [load]);
+
+  // Real-time Pusher subscription for biomedica roles
+  useEffect(() => {
+    if (!PUSHER_KEY || !BIOMEDICA_ROLES.includes(rol)) return;
+    let pusherInstance: any = null;
+    import("pusher-js").then(({ default: Pusher }) => {
+      pusherInstance = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+      const ch = pusherInstance.subscribe("alertas-biomedica");
+      ch.bind("nueva-alerta", () => { load(); });
+    });
+    return () => { if (pusherInstance) pusherInstance.disconnect(); };
+  }, [rol, load]);
 
   useEffect(() => {
     if (!open) return;

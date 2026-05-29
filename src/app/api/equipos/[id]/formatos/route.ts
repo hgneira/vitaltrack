@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { pusherServer, isPusherConfigured } from "@/lib/pusher-server";
 
 const ALLOWED = ["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"];
 
@@ -65,7 +66,7 @@ export async function POST(
     if (body.tipo === "SERVICIO") {
       const folio = body.datos?.folio ? ` — Folio: ${body.datos.folio}` : "";
       const ubicacion = equipo?.ubicacion ? ` (${equipo.ubicacion})` : "";
-      await prisma.alerta.create({
+      const alerta = await prisma.alerta.create({
         data: {
           titulo: `Orden de servicio: ${equipo?.nombre ?? id}`,
           descripcion: `Se generó una orden de servicio para ${equipo?.nombre ?? "equipo"}${ubicacion}${folio}. Requiere atención del área de ingeniería biomédica.`,
@@ -74,6 +75,11 @@ export async function POST(
           creadaPorId: userId,
         },
       });
+      if (isPusherConfigured) {
+        await pusherServer.trigger("alertas-biomedica", "nueva-alerta", {
+          id: alerta.id, titulo: alerta.titulo, descripcion: alerta.descripcion,
+        }).catch(() => {});
+      }
     }
 
     return NextResponse.json(formato, { status: 201 });

@@ -52,12 +52,9 @@ export async function GET() {
     }
 
     // ── ALERTAS PENDIENTES ────────────────────────────────────────────────────
-    if (["ADMINISTRADOR", "MANTENIMIENTO"].includes(rol)) {
-      const tipoWhere =
-        rol === "MANTENIMIENTO"  ? { tipo: "MANTENIMIENTO" as const } : {};
-
+    if (["ADMINISTRADOR", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol)) {
       const alertas = await prisma.alerta.findMany({
-        where: { estado: "PENDIENTE", ...tipoWhere },
+        where: { estado: "PENDIENTE" },
         orderBy: { createdAt: "desc" },
         take: 15,
       });
@@ -123,7 +120,7 @@ export async function GET() {
     }
 
     // ── EQUIPOS FUERA DE SERVICIO / EN MANTENIMIENTO ──────────────────────────
-    if (["ADMINISTRADOR", "JEFE_BIOMEDICA"].includes(rol)) {
+    if (["ADMINISTRADOR", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"].includes(rol)) {
       const equipos = await prisma.equipoMedico.findMany({
         where: { estado: { in: ["EN_MANTENIMIENTO", "FUERA_DE_SERVICIO"] } },
         select: { id: true, nombre: true, estado: true, updatedAt: true },
