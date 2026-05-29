@@ -6,8 +6,28 @@ import { useSession } from "next-auth/react";
 import {
   Users, CalendarDays, CalendarCheck, CalendarClock,
   Plus, ArrowRight, TrendingUp, Clock, Stethoscope,
-  SprayCan, Pill, Bell, UserCog, Activity, Wrench, AlertTriangle,
+  SprayCan, Pill, Bell, UserCog, Activity, Wrench, AlertTriangle, Building2,
 } from "lucide-react";
+
+const URGENCIAS_AREAS = new Set([
+  "Sala de Choque","Central de Enfermeras","Sala de Curaciones","Sala de Yesos",
+  "Sala de Rayos X","Cuarto de Ultrasonido","Laboratorio Clínico de Urgencias",
+  "Banco de Sangre / Área de Transfusión","Cuarto de Medicamentos","Cuarto de Material Estéril",
+  "Cuarto de Ropa Limpia","Cuarto de Ropa Sucia","Cuarto de Limpieza","Hidratación Pediátrica",
+  "Hidratación Adultos","Almacén de Equipos y Suministros","Archivo de Expedientes",
+  "Vestidor de Personal","Área de Trabajo de Enfermería",
+  "Cubículo de Observación General 1","Cubículo de Observación General 2",
+  "Cubículo de Observación General 3","Cubículo de Observación General 4",
+  "Cubículo de Observación General 5","Cubículo de Observación General 6",
+  "Cubículo de Observación Pediátrica 1","Cubículo de Observación Pediátrica 2",
+  "Cubículo de Aislamiento 1","Cubículo de Aislamiento 2",
+  "Cubículo de Triage 1","Cubículo de Triage 2","Cubículo de Triage 3",
+  "Módulo de Recepción y Control","Área de Descontaminación","Estación de Camillas",
+  "Estación de Sillas de Ruedas","Oficina del Médico Responsable","Pasillo de Ambulancias",
+  "Sala de Espera","Sala de Juntas y Trabajo Médico",
+  "Sanitario Personal (Hombres)","Sanitario Personal (Mujeres)",
+  "Sanitario Público (Hombres)","Sanitario Público (Mujeres)",
+]);
 
 interface Cita {
   id: string;
@@ -44,7 +64,7 @@ export default function DashboardPage() {
 
   const [pacientes, setPacientes] = useState<unknown[]>([]);
   const [citas, setCitas] = useState<Cita[]>([]);
-  const [equipos, setEquipos] = useState<{ estado: string; mantenimientos: { proximoMantenimiento?: string }[]; _count: { mantenimientos: number } }[]>([]);
+  const [equipos, setEquipos] = useState<{ estado: string; ubicacion?: string; mantenimientos: { proximoMantenimiento?: string }[]; _count: { mantenimientos: number } }[]>([]);
   const [medicamentos, setMedicamentos] = useState<{ stock: number; stockMinimo: number }[]>([]);
   const [alertas, setAlertas] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,15 +131,6 @@ export default function DashboardPage() {
   }
   if (["ADMINISTRADOR", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA", "JEFE_BIOMEDICA"].includes(rol)) {
     stats.push({ label: "Alertas pendientes", value: (alertas as unknown[]).length, icon: Bell, color: "bg-red-500", bg: "bg-red-50", text: "text-red-600", ring: "ring-red-100" });
-  }
-  if (["INGENIERIA_BIOMEDICA", "MANTENIMIENTO"].includes(rol)) {
-    const enMant = equipos.filter((e) => e.estado === "EN_MANTENIMIENTO").length;
-    const fuera  = equipos.filter((e) => e.estado === "FUERA_DE_SERVICIO").length;
-    stats.push(
-      { label: "Total equipos",      value: equipos.length, icon: Stethoscope,  color: "bg-blue-500",    bg: "bg-blue-50",    text: "text-blue-600",    ring: "ring-blue-100" },
-      { label: "En mantenimiento",   value: enMant,         icon: Wrench,        color: "bg-amber-500",   bg: "bg-amber-50",   text: "text-amber-600",   ring: "ring-amber-100" },
-      { label: "Fuera de servicio",  value: fuera,          icon: AlertTriangle, color: "bg-red-500",     bg: "bg-red-50",     text: "text-red-600",     ring: "ring-red-100" },
-    );
   }
 
   // Quick actions by role
@@ -212,6 +223,64 @@ export default function DashboardPage() {
             })}
           </div>
         )}
+
+        {/* Dual inventory section for biomedica / mantenimiento / jefe */}
+        {["INGENIERIA_BIOMEDICA", "MANTENIMIENTO", "JEFE_BIOMEDICA"].includes(rol) && (() => {
+          const urg = equipos.filter(e => URGENCIAS_AREAS.has(e.ubicacion ?? ""));
+          const gen = equipos;
+          const statCard = (label: string, value: number, Icon: React.ElementType, textCls: string, bgCls: string) => (
+            <div key={label} className="flex items-center gap-3">
+              <div className={`${bgCls} p-2 rounded-lg shrink-0`}><Icon size={15} className={textCls} /></div>
+              <div>
+                <p className="text-xs text-slate-500">{label}</p>
+                <p className={`text-xl font-bold ${textCls}`}>{loading ? "…" : value}</p>
+              </div>
+            </div>
+          );
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* Inventario General */}
+              <div className="bg-white rounded-2xl shadow-sm ring-1 ring-blue-100 overflow-hidden">
+                <div className="bg-blue-600 px-5 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building2 size={16} className="text-white" />
+                    <h2 className="font-semibold text-white text-sm">Inventario General</h2>
+                  </div>
+                  <button onClick={() => router.push("/dashboard/inventario-general")}
+                    className="text-blue-200 hover:text-white text-xs font-medium flex items-center gap-1">
+                    Ver todo <ArrowRight size={12} />
+                  </button>
+                </div>
+                <div className="p-5 grid grid-cols-2 gap-4">
+                  {statCard("Total equipos",     gen.length,                                                           Stethoscope,  "text-blue-600",    "bg-blue-50")}
+                  {statCard("Activos",           gen.filter(e => e.estado === "ACTIVO").length,                        Activity,     "text-emerald-600", "bg-emerald-50")}
+                  {statCard("En mantenimiento",  gen.filter(e => e.estado === "EN_MANTENIMIENTO").length,              Wrench,       "text-amber-600",   "bg-amber-50")}
+                  {statCard("Fuera de servicio", gen.filter(e => e.estado === "FUERA_DE_SERVICIO").length,             AlertTriangle,"text-red-600",     "bg-red-50")}
+                </div>
+              </div>
+
+              {/* Inventario Urgencias */}
+              <div className="bg-white rounded-2xl shadow-sm ring-1 ring-red-100 overflow-hidden">
+                <div className="bg-red-600 px-5 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Activity size={16} className="text-white" />
+                    <h2 className="font-semibold text-white text-sm">Inventario Urgencias</h2>
+                  </div>
+                  <button onClick={() => router.push("/dashboard/urgencias/inventario")}
+                    className="text-red-200 hover:text-white text-xs font-medium flex items-center gap-1">
+                    Ver todo <ArrowRight size={12} />
+                  </button>
+                </div>
+                <div className="p-5 grid grid-cols-2 gap-4">
+                  {statCard("Total equipos",     urg.length,                                                           Stethoscope,  "text-red-600",     "bg-red-50")}
+                  {statCard("Activos",           urg.filter(e => e.estado === "ACTIVO").length,                        Activity,     "text-emerald-600", "bg-emerald-50")}
+                  {statCard("En mantenimiento",  urg.filter(e => e.estado === "EN_MANTENIMIENTO").length,              Wrench,       "text-amber-600",   "bg-amber-50")}
+                  {statCard("Fuera de servicio", urg.filter(e => e.estado === "FUERA_DE_SERVICIO").length,             AlertTriangle,"text-orange-600",  "bg-orange-50")}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent citas — solo roles médicos */}
