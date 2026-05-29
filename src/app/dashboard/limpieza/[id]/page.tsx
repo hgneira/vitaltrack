@@ -35,7 +35,7 @@ export default function AreaDetallePage() {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ tipo: descripcion: "" });
+  const [form, setForm] = useState({ tipo: "", descripcion: "" });
   const [saving, setSaving] = useState(false);
 
   const loadRegistros = async () => {

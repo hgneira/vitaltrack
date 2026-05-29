@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         titulo: body.titulo,
         descripcion: body.descripcion ?? null,
         areaId: body.areaId ?? null,
-        tipo: body.tipo ?? ,
+        tipo: body.tipo ?? "GENERAL",
         prioridad: body.prioridad ?? "MEDIA",
         creadaPorId: (session.user as any).id,
       },

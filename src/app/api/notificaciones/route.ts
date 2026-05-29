@@ -54,7 +54,6 @@ export async function GET() {
     // ── ALERTAS PENDIENTES ────────────────────────────────────────────────────
     if (["ADMINISTRADOR", "MANTENIMIENTO"].includes(rol)) {
       const tipoWhere =
-        rol ===        ? { tipo:       as const } :
         rol === "MANTENIMIENTO"  ? { tipo: "MANTENIMIENTO" as const } : {};
 
       const alertas = await prisma.alerta.findMany({

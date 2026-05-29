@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const rol = (session.user as any).rol;
 
     const tareas = await prisma.tareaMantenimiento.findMany({
-      where: rol === 
+      where: rol === "MANTENIMIENTO"
         ? { OR: [{ asignadoAId: userId }, { asignadoAId: null }] }
         : {},
       include: {

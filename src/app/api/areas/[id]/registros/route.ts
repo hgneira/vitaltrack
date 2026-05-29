@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       data: {
         areaId: id,
         userId: (session.user as any).id,
-        tipo: body.tipo ?? ,
+        tipo: body.tipo ?? "GENERAL",
         descripcion: body.descripcion ?? null,
       },
       include: {

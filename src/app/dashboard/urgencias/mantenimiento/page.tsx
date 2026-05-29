@@ -500,7 +500,7 @@ export default function MantenimientoPage() {
                           <option value="PREVENTIVO">Preventivo</option>
                           <option value="CORRECTIVO">Correctivo</option>
                           <option value="CALIBRACION">Calibración</option>
-                          <option value=>Limpieza</option>
+                          <option value="LIMPIEZA">Limpieza</option>
                           <option value="VERIFICACION">Verificación</option>
                         </select>
                       </div>

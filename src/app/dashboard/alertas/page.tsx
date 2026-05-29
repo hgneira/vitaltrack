@@ -36,7 +36,7 @@ export default function AlertasPage() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("PENDIENTE");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ titulo: "", descripcion: "", areaId: "", tipo: prioridad: "MEDIA" });
+  const [form, setForm] = useState({ titulo: "", descripcion: "", areaId: "", tipo: "", prioridad: "MEDIA" });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
