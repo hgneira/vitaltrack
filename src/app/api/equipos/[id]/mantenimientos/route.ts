@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-const ALLOWED = ["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS"];
+const ALLOWED = ["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"];
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -60,6 +60,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // Update equipment status if requested
     if (body.nuevoEstado) {
       await prisma.equipoMedico.update({ where: { id }, data: { estado: body.nuevoEstado } });
+    }
+
+    // Auto-complete pending tasks for this device when set back to ACTIVO
+    if (body.nuevoEstado === "ACTIVO") {
+      await prisma.tareaMantenimiento.updateMany({
+        where: { equipoId: id, estado: { in: ["PENDIENTE", "EN_PROCESO"] } },
+        data: { estado: "COMPLETADO" },
+      }).catch(() => {});
     }
 
     // Upsert TareaMantenimiento linked to this mantenimiento (non-fatal if it fails)

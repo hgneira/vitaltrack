@@ -67,17 +67,29 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       });
     }
 
-    // If estado changed to FUERA_DE_SERVICIO, create alert and notify in real-time
+    // If estado changed to FUERA_DE_SERVICIO, create alert + task and notify in real-time
     if (body.estado === "FUERA_DE_SERVICIO") {
+      const userId = (session.user as any).id;
+      const desc = `El equipo "${equipo.nombre}"${equipo.ubicacion ? ` (${equipo.ubicacion})` : ""} fue marcado como fuera de servicio. Requiere atención del área biomédica.`;
       const alerta = await prisma.alerta.create({
         data: {
           titulo: `Equipo fuera de servicio: ${equipo.nombre}`,
-          descripcion: `El equipo "${equipo.nombre}"${equipo.ubicacion ? ` (${equipo.ubicacion})` : ""} fue marcado como fuera de servicio. Requiere atención del área biomédica.`,
+          descripcion: desc,
           tipo: "MANTENIMIENTO",
           prioridad: "ALTA",
-          creadaPorId: (session.user as any).id,
+          creadaPorId: userId,
         },
       });
+      // Auto-create pending task for biomedica
+      await prisma.tareaMantenimiento.create({
+        data: {
+          equipoId:     id,
+          asignadoPorId: userId,
+          fecha:        new Date(),
+          tipo:         "CORRECTIVO",
+          descripcion:  `Revisión requerida: equipo fuera de servicio${equipo.ubicacion ? ` en ${equipo.ubicacion}` : ""}`,
+        },
+      }).catch(() => {});
       if (isPusherConfigured) {
         await pusherServer.trigger("alertas-biomedica", "nueva-alerta", {
           id: alerta.id, titulo: alerta.titulo, descripcion: alerta.descripcion,

@@ -36,7 +36,7 @@ export default function MisTareasPage() {
   }, []);
 
   const misTareas = tareas
-    .filter((t) => t.asignadoA?.id === userId)
+    .filter((t) => !t.asignadoA || t.asignadoA.id === userId)
     .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
   const pendientes  = misTareas.filter((t) => t.estado === "PENDIENTE" || t.estado === "EN_PROCESO");

@@ -75,6 +75,17 @@ export async function POST(
           creadaPorId: userId,
         },
       });
+      // Auto-create pending task for biomedica
+      const folio2 = body.datos?.folio ? ` — Folio: ${body.datos.folio}` : "";
+      await prisma.tareaMantenimiento.create({
+        data: {
+          equipoId:      id,
+          asignadoPorId: userId,
+          fecha:         new Date(),
+          tipo:          "CORRECTIVO",
+          descripcion:   `Orden de servicio${folio2}: ${equipo?.nombre ?? "equipo"}${equipo?.ubicacion ? ` (${equipo.ubicacion})` : ""}`,
+        },
+      }).catch(() => {});
       if (isPusherConfigured) {
         await pusherServer.trigger("alertas-biomedica", "nueva-alerta", {
           id: alerta.id, titulo: alerta.titulo, descripcion: alerta.descripcion,
