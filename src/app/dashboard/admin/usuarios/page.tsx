@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import {
   UserCog, Plus, Search, Check, X, Pencil, Trash2, AlertTriangle,
   Stethoscope, HeartPulse, FlaskConical,
-  Wrench, ShieldCheck, Users, ConciergeBell, Activity,
+  Wrench, ShieldCheck, Users, ConciergeBell, Activity, DatabaseZap,
 } from "lucide-react";
 
 interface Usuario {
