@@ -53,10 +53,7 @@ const ALL_NAV = [
   {
     section: "Ing. Biomédica",
     items: [
-      { href: "/dashboard/biomedica",            label: "Equipo Médico",    icon: Stethoscope,   roles: ["ADMINISTRADOR", "JEFE_BIOMEDICA", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA"] },
-      { href: "/dashboard/biomedica/mis-tareas", label: "Mis tareas",       icon: ClipboardList, roles: ["MANTENIMIENTO", "INGENIERIA_BIOMEDICA"] },
-      { href: "/dashboard/biomedica/equipo",     label: "Mi Equipo",        icon: ClipboardList, roles: ["JEFE_BIOMEDICA"] },
-      { href: "/dashboard/biomedica/equipo",     label: "Equipo Biomédica", icon: Users,         roles: ["ADMINISTRADOR"] },
+      { href: "/dashboard/biomedica/mis-tareas", label: "Mis tareas", icon: ClipboardList, roles: ["MANTENIMIENTO", "INGENIERIA_BIOMEDICA"] },
     ],
   },
   {
