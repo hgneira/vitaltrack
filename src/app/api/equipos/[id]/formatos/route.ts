@@ -39,6 +39,11 @@ export async function POST(
     const body = await request.json();
     const userId = (session.user as any).id;
 
+    const equipo = await prisma.equipoMedico.findUnique({
+      where: { id },
+      select: { nombre: true, ubicacion: true },
+    });
+
     const formato = await prisma.formatoRegistro.create({
       data: {
         equipoId: id,
@@ -53,6 +58,21 @@ export async function POST(
       await prisma.equipoMedico.update({
         where: { id },
         data: { estado: "DADO_DE_BAJA" },
+      });
+    }
+
+    // If orden de servicio, create alert for biomedica & mantenimiento
+    if (body.tipo === "SERVICIO") {
+      const folio = body.datos?.folio ? ` — Folio: ${body.datos.folio}` : "";
+      const ubicacion = equipo?.ubicacion ? ` (${equipo.ubicacion})` : "";
+      await prisma.alerta.create({
+        data: {
+          titulo: `Orden de servicio: ${equipo?.nombre ?? id}`,
+          descripcion: `Se generó una orden de servicio para ${equipo?.nombre ?? "equipo"}${ubicacion}${folio}. Requiere atención del área de ingeniería biomédica.`,
+          tipo: "MANTENIMIENTO",
+          prioridad: "ALTA",
+          creadaPorId: userId,
+        },
       });
     }
 
