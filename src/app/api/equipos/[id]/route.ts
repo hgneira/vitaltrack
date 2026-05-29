@@ -40,14 +40,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const equipo = await prisma.equipoMedico.update({
       where: { id },
       data: {
-        nombre: body.nombre,
-        marca: body.marca ?? null,
-        modelo: body.modelo ?? null,
-        numeroSerie: body.numeroSerie ?? null,
-        fechaAdquisicion: body.fechaAdquisicion ? new Date(body.fechaAdquisicion) : null,
-        ubicacion: body.ubicacion ?? null,
-        estado: body.estado,
-        descripcion: body.descripcion ?? null,
+        ...(body.nombre !== undefined ? { nombre: body.nombre } : {}),
+        ...(body.marca !== undefined ? { marca: body.marca || null } : {}),
+        ...(body.modelo !== undefined ? { modelo: body.modelo || null } : {}),
+        ...(body.numeroSerie !== undefined ? { numeroSerie: body.numeroSerie || null } : {}),
+        ...(body.fechaAdquisicion !== undefined ? { fechaAdquisicion: body.fechaAdquisicion ? new Date(body.fechaAdquisicion) : null } : {}),
+        ...(body.ubicacion !== undefined ? { ubicacion: body.ubicacion || null } : {}),
+        ...(body.estado !== undefined ? { estado: body.estado } : {}),
+        ...(body.descripcion !== undefined ? { descripcion: body.descripcion || null } : {}),
         ...(body.tagUid !== undefined ? { tagUid: body.tagUid || null } : {}),
       },
     });
