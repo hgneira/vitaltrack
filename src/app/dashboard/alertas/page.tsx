@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Bell, Plus, X, AlertTriangle, Clock, CheckCircle } from "lucide-react";
+
+const PUSHER_KEY     = process.env.NEXT_PUBLIC_PUSHER_KEY ?? "";
+const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER ?? "us2";
 
 interface Alerta {
   id: string;
@@ -39,7 +42,7 @@ export default function AlertasPage() {
   const [form, setForm] = useState({ titulo: "", descripcion: "", areaId: "", tipo: "", prioridad: "MEDIA" });
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const [alertData, areaData] = await Promise.all([
       fetch(`/api/alertas${filtro !== "TODAS" ? `?estado=${filtro}` : ""}`).then((r) => r.json()),
       fetch("/api/areas").then((r) => r.json()),
@@ -47,9 +50,21 @@ export default function AlertasPage() {
     setAlertas(Array.isArray(alertData) ? alertData : []);
     setAreas(Array.isArray(areaData) ? areaData : []);
     setLoading(false);
-  };
+  }, [filtro]);
 
-  useEffect(() => { setLoading(true); load(); }, [filtro]);
+  useEffect(() => { setLoading(true); load(); }, [load]);
+
+  // Real-time: subscribe to Pusher alertas-biomedica channel
+  useEffect(() => {
+    if (!PUSHER_KEY) return;
+    let pusherInstance: any = null;
+    import("pusher-js").then(({ default: Pusher }) => {
+      pusherInstance = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+      const ch = pusherInstance.subscribe("alertas-biomedica");
+      ch.bind("nueva-alerta", () => load());
+    });
+    return () => { if (pusherInstance) pusherInstance.disconnect(); };
+  }, [load]);
 
   const cambiarEstado = async (id: string, estado: string) => {
     await fetch("/api/alertas", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, estado }) });

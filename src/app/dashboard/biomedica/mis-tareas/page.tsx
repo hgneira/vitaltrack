@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { ClipboardList, Wrench, Calendar, AlertTriangle, CheckCircle, Clock, RefreshCw, XCircle } from "lucide-react";
+
+const PUSHER_KEY     = process.env.NEXT_PUBLIC_PUSHER_KEY ?? "";
+const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER ?? "us2";
 
 interface Tarea {
   id: string;
@@ -29,11 +32,25 @@ export default function MisTareasPage() {
   const [tareas,  setTareas]  = useState<Tarea[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     fetch("/api/tareas-mantenimiento")
       .then((r) => r.json())
       .then((d) => { setTareas(Array.isArray(d) ? d : []); setLoading(false); });
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Real-time: refresh when new alert/task arrives via Pusher
+  useEffect(() => {
+    if (!PUSHER_KEY) return;
+    let pusherInstance: any = null;
+    import("pusher-js").then(({ default: Pusher }) => {
+      pusherInstance = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+      const ch = pusherInstance.subscribe("alertas-biomedica");
+      ch.bind("nueva-alerta", () => load());
+    });
+    return () => { if (pusherInstance) pusherInstance.disconnect(); };
+  }, [load]);
 
   const misTareas = tareas
     .filter((t) => !t.asignadoA || t.asignadoA.id === userId)
