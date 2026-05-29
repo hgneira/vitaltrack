@@ -98,7 +98,7 @@ export async function GET() {
     // ── TAREAS BIOMÉDICAS ─────────────────────────────────────────────────────
     if (["ADMINISTRADOR", "JEFE_BIOMEDICA"].includes(rol)) {
       const tareaWhere =
-        rol === 
+        rol === "MANTENIMIENTO"
           ? { asignadoAId: userId, estado: { in: ["PENDIENTE" as const, "EN_PROCESO" as const] } }
           : { estado: { in: ["PENDIENTE" as const, "EN_PROCESO" as const] } };
 
