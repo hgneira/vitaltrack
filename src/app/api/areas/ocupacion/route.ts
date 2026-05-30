@@ -4,7 +4,8 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
 const ALLOWED = ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "RECEPCION", "URGENCIAS", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"];
-const ACTIVE_STATES = ["ESPERA", "ATENCION", "OBSERVACION", "EN_PROCESO", "ADMITIDO"];
+// Count everyone except patients who have been discharged
+const EXCLUDED_STATES = ["ALTA"];
 
 export async function GET() {
   try {
@@ -21,10 +22,7 @@ export async function GET() {
       prisma.paciente.findMany({
         where: {
           areaAsignada: { not: null },
-          OR: [
-            { estadoAtencion: null },
-            { estadoAtencion: { in: ACTIVE_STATES } },
-          ],
+          NOT: { estadoAtencion: { in: EXCLUDED_STATES } },
         },
         select: { id: true, nombre: true, apellidos: true, areaAsignada: true, estadoAtencion: true, asignadoEn: true, createdAt: true },
       }),

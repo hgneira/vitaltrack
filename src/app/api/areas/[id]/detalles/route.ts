@@ -4,7 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
 const ALLOWED = ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "RECEPCION", "URGENCIAS", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"];
-const ACTIVE_STATES = ["ESPERA", "ATENCION", "OBSERVACION", "EN_PROCESO", "ADMITIDO"];
+const EXCLUDED_STATES = ["ALTA"];
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -21,10 +21,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       prisma.paciente.findMany({
         where: {
           areaAsignada: area.nombre,
-          OR: [
-            { estadoAtencion: null },
-            { estadoAtencion: { in: ACTIVE_STATES } },
-          ],
+          NOT: { estadoAtencion: { in: EXCLUDED_STATES } },
         },
         select: {
           id: true, nombre: true, apellidos: true, numeroExpediente: true,
