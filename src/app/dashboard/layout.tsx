@@ -54,7 +54,7 @@ const ALL_NAV = [
     section: "Área Médica",
     items: [
       { href: "/dashboard/pacientes",     label: "Pacientes",         icon: Users,        roles: ["MEDICO", "ENFERMERIA", "RECEPCION", "URGENCIAS"] },
-      { href: "/dashboard/citas",         label: "Citas",             icon: CalendarDays, roles: ["MEDICO", "ENFERMERIA", "RECEPCION"] },
+      { href: "/dashboard/citas",         label: "Citas",             icon: CalendarDays, roles: ["MEDICO", "ENFERMERIA"] },
     ],
   },
   {
