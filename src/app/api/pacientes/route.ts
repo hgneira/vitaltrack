@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { encryptField } from "@/lib/crypto";
 import { logAuditoria } from "@/lib/auditoria";
+import { pusherServer, isPusherConfigured } from "@/lib/pusher-server";
 
 // Only medical staff can access patient records
 const ROLES_PACIENTES = ["MEDICO", "ENFERMERIA", "RECEPCION", "ADMINISTRADOR", "URGENCIAS"];
@@ -103,6 +104,19 @@ export async function POST(request: Request) {
       pacienteId: paciente.id,
       detalle: `Paciente registrado: ${paciente.nombre} ${paciente.apellidos}`,
     });
+
+    // Update asignadoEn if area provided
+    if (body.areaAsignada) {
+      await prisma.paciente.update({
+        where: { id: paciente.id },
+        data: { asignadoEn: new Date() },
+      });
+      if (isPusherConfigured) {
+        await pusherServer.trigger("areas-urgencias", "area-actualizada", {
+          pacienteId: paciente.id, areaDestino: body.areaAsignada,
+        }).catch(() => {});
+      }
+    }
 
     return NextResponse.json(paciente, { status: 201 });
   } catch {

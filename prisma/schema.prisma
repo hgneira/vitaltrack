@@ -62,6 +62,7 @@ model User {
   consentimientosRegistrados ConsentimientoInformado[] @relation("consentimientosRegistrados")
   normativasSubidas          Normativa[]               @relation("normativasSubidas")
   mensajesChat               ChatMensaje[]             @relation("mensajesEnviados")
+  movimientosPaciente        MovimientoPaciente[]
   formatosCreados            FormatoRegistro[]         @relation("formatosCreados")
 
   @@map("usuarios")
@@ -97,6 +98,7 @@ model Paciente {
   numeroExpediente   String?  @unique
   medicoId           String?
   areaAsignada       String?
+  asignadoEn         DateTime?
   motivoConsulta     String?
   estadoAtencion     String?  @default("ESPERA")
   createdAt          DateTime @default(now())
@@ -106,6 +108,7 @@ model Paciente {
   citas           Cita[]
   expedientes     Expediente[]
   consentimiento  ConsentimientoInformado?
+  movimientosArea MovimientoPaciente[]
 
   @@map("pacientes")
 }
@@ -303,18 +306,20 @@ enum TipoPago {
 // ==================== LIMPIEZA Y MANTENIMIENTO ====================
 
 model AreaHospital {
-  id          String   @id @default(cuid())
-  nombre      String
-  descripcion String?
-  piso        String?
-  tipo        TipoArea @default(OTRO)
-  categoria   String?
-  capacidad   String?
-  activo      Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id              String   @id @default(cuid())
+  nombre          String
+  descripcion     String?
+  piso            String?
+  tipo            TipoArea @default(OTRO)
+  categoria       String?
+  capacidad       String?
+  capacidadMaxima Int?
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
 
-  registros RegistroLimpieza[]
-  alertas   Alerta[]
+  registros           RegistroLimpieza[]
+  alertas             Alerta[]
+  movimientosPaciente MovimientoPaciente[]
 
   @@map("areas_hospital")
 }
@@ -747,6 +752,26 @@ model FormatoRegistro {
   createdAt   DateTime @default(now())
 
   @@map("formatos_registro")
+}
+
+// ==================== MOVIMIENTOS DE PACIENTE ====================
+
+model MovimientoPaciente {
+  id             String   @id @default(cuid())
+  pacienteId     String
+  areaOrigenId   String?
+  areaDestinoId  String
+  areaOrigen     String?
+  areaDestino    String
+  realizadoPorId String
+  notas          String?
+  createdAt      DateTime @default(now())
+
+  paciente     Paciente     @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  areaOrigenR  AreaHospital? @relation(fields: [areaOrigenId], references: [id])
+  realizadoPor User         @relation(fields: [realizadoPorId], references: [id])
+
+  @@map("movimientos_paciente")
 }
 
 // ==================== CHAT INTERNO ====================

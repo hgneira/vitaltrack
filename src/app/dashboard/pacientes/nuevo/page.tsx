@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, UserPlus, ShieldCheck, X, CheckSquare, Square } from "lucide-react";
 
@@ -152,21 +152,26 @@ function ConsentModal({
 }
 
 // ── Area assignment modal ──────────────────────────────────────────────────────
-const AREAS_URGENCIAS = [
-  "Cubículo de Triage 1", "Cubículo de Triage 2", "Cubículo de Triage 3",
-  "Sala de Choque",
-  "Cubículo de Observación General 1", "Cubículo de Observación General 2",
-  "Cubículo de Observación General 3", "Cubículo de Observación General 4",
-  "Cubículo de Observación General 5", "Cubículo de Observación General 6",
-  "Cubículo de Observación Pediátrica 1", "Cubículo de Observación Pediátrica 2",
-  "Cubículo de Aislamiento 1", "Cubículo de Aislamiento 2",
-  "Hidratación Pediátrica", "Hidratación Adultos",
-  "Sala de Espera",
-];
+interface AreaOpc { id: string; nombre: string; capacidadMaxima?: number; ocupados: number; estado: string }
 
 function AreaModal({ onConfirm }: { onConfirm: (area: string, motivo: string) => void }) {
-  const [area, setArea] = useState("Cubículo de Triage 1");
+  const [areas, setAreas] = useState<AreaOpc[]>([]);
+  const [area, setArea] = useState("");
   const [motivo, setMotivo] = useState("");
+
+  useEffect(() => {
+    fetch("/api/areas/ocupacion")
+      .then((r) => r.json())
+      .then((data: AreaOpc[]) => {
+        if (!Array.isArray(data)) return;
+        const disponibles = data.filter(
+          (a) => !a.capacidadMaxima || a.ocupados < a.capacidadMaxima
+        );
+        setAreas(disponibles);
+        if (disponibles.length > 0) setArea(disponibles[0].nombre);
+      });
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
@@ -187,15 +192,24 @@ function AreaModal({ onConfirm }: { onConfirm: (area: string, motivo: string) =>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Área asignada</label>
-            <select value={area} onChange={e => setArea(e.target.value)}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
-              {AREAS_URGENCIAS.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+            {areas.length === 0 ? (
+              <p className="text-sm text-slate-400 py-2">Cargando áreas…</p>
+            ) : (
+              <select value={area} onChange={e => setArea(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                {areas.map(a => (
+                  <option key={a.id} value={a.nombre}>
+                    {a.nombre}{a.capacidadMaxima ? ` — ${a.ocupados}/${a.capacidadMaxima}` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="text-[11px] text-slate-400 mt-1">Solo áreas con capacidad disponible</p>
           </div>
         </div>
         <div className="px-6 pb-6">
           <button
-            disabled={!motivo.trim()}
+            disabled={!motivo.trim() || !area}
             onClick={() => onConfirm(area, motivo)}
             className="w-full bg-cyan-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-cyan-700 disabled:opacity-40"
           >
