@@ -2,17 +2,18 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 // Permisos por ruta prefix → roles que tienen acceso
-const ROUTE_PERMISSIONS: Record<string, string[]> = {
-  "/dashboard/admin":       ["ADMINISTRADOR"],
-  "/dashboard/empleados":   ["ADMINISTRADOR"],
-  "/dashboard/pacientes":   ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "RECEPCION", "URGENCIAS"],
-  "/dashboard/citas":       ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "RECEPCION"],
-  "/dashboard/biomedica":   ["ADMINISTRADOR", "JEFE_BIOMEDICA", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA"],
-  "/dashboard/limpieza":    ["ADMINISTRADOR", "MANTENIMIENTO"],
-  "/dashboard/farmacia":    ["ADMINISTRADOR"],
-  "/dashboard/urgencias":   ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"],
-  // /dashboard/dispositivo and /dashboard/equipos open to all authenticated roles
-};
+// More specific (longer) prefixes must come first in the object
+const ROUTE_PERMISSIONS: [string, string[]][] = [
+  ["/dashboard/admin",               ["ADMINISTRADOR"]],
+  ["/dashboard/empleados",           ["ADMINISTRADOR"]],
+  ["/dashboard/urgencias/areas",     ["ADMINISTRADOR", "URGENCIAS", "MEDICO", "ENFERMERIA", "RECEPCION", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"]],
+  ["/dashboard/urgencias",           ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"]],
+  ["/dashboard/pacientes",           ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "RECEPCION", "URGENCIAS"]],
+  ["/dashboard/citas",               ["ADMINISTRADOR", "MEDICO", "ENFERMERIA"]],
+  ["/dashboard/biomedica",           ["ADMINISTRADOR", "JEFE_BIOMEDICA", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA"]],
+  ["/dashboard/limpieza",            ["ADMINISTRADOR", "MANTENIMIENTO"]],
+  ["/dashboard/farmacia",            ["ADMINISTRADOR"]],
+];
 
 export default withAuth(
   function middleware(req) {
@@ -23,10 +24,13 @@ export default withAuth(
     // Allow admin access everywhere
     if (rol === "ADMINISTRADOR") return NextResponse.next();
 
-    // Check each protected prefix
-    for (const [prefix, allowed] of Object.entries(ROUTE_PERMISSIONS)) {
-      if (pathname.startsWith(prefix) && !allowed.includes(rol)) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+    // Find the most specific matching prefix (first match wins since array is ordered)
+    for (const [prefix, allowed] of ROUTE_PERMISSIONS) {
+      if (pathname.startsWith(prefix)) {
+        if (!allowed.includes(rol)) {
+          return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
+        break; // most specific match found, stop checking
       }
     }
 

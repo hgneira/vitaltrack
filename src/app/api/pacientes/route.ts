@@ -21,31 +21,15 @@ export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const userId = (session.user as any).id;
-    const rol    = (session.user as any).rol;
+    const rol = (session.user as any).rol;
 
     if (!ROLES_PACIENTES.includes(rol))
       return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
 
-    let pacientes;
-
-    if (rol === "MEDICO") {
-      pacientes = await prisma.paciente.findMany({
-        where: {
-          OR: [
-            { medicoId: userId },
-            { citas: { some: { medicoId: userId } } },
-          ],
-        },
-        include: { consentimiento: { select: { aceptado: true } } },
-        orderBy: { createdAt: "desc" },
-      });
-    } else {
-      pacientes = await prisma.paciente.findMany({
-        include: { consentimiento: { select: { aceptado: true } } },
-        orderBy: { createdAt: "desc" },
-      });
-    }
+    const pacientes = await prisma.paciente.findMany({
+      include: { consentimiento: { select: { aceptado: true } } },
+      orderBy: { createdAt: "desc" },
+    });
 
     return NextResponse.json(pacientes);
   } catch {
