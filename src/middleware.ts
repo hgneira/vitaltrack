@@ -9,7 +9,7 @@ const ROUTE_PERMISSIONS: [string, string[]][] = [
   ["/dashboard/urgencias/areas",     ["ADMINISTRADOR", "URGENCIAS", "MEDICO", "ENFERMERIA", "RECEPCION", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"]],
   ["/dashboard/urgencias",           ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"]],
   ["/dashboard/pacientes",           ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "RECEPCION", "URGENCIAS"]],
-  ["/dashboard/citas",               ["ADMINISTRADOR", "MEDICO", "ENFERMERIA"]],
+  ["/dashboard/citas",               ["ADMINISTRADOR", "ENFERMERIA"]],
   ["/dashboard/biomedica",           ["ADMINISTRADOR", "JEFE_BIOMEDICA", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA"]],
   ["/dashboard/limpieza",            ["ADMINISTRADOR", "MANTENIMIENTO"]],
   ["/dashboard/farmacia",            ["ADMINISTRADOR"]],
