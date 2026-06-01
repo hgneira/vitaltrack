@@ -4,7 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { pusherServer, isPusherConfigured } from "@/lib/pusher-server";
 
-const ALLOWED = ["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"];
+const ALLOWED = ["ADMINISTRADOR", "JEFE_BIOMEDICA", "URGENCIAS", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO", "MEDICO", "ENFERMERIA", "RECEPCION"];
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
