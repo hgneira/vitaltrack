@@ -66,16 +66,16 @@ const ALL_NAV = [
   {
     section: "Hospital",
     items: [
-      { href: "/dashboard/inventario-general", label: "Inventario General", icon: Building2, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "JEFE_BIOMEDICA", "MANTENIMIENTO", "URGENCIAS", "INGENIERIA_BIOMEDICA"] },
+      { href: "/dashboard/inventario-general", label: "Inventario General", icon: Building2, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "JEFE_BIOMEDICA", "RECEPCION", "MANTENIMIENTO", "URGENCIAS", "INGENIERIA_BIOMEDICA"] },
       { href: "/dashboard/normativas", label: "Normativas", icon: BookOpen, roles: ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "JEFE_BIOMEDICA", "RECEPCION", "MANTENIMIENTO", "URGENCIAS", "INGENIERIA_BIOMEDICA"] },
     ],
   },
   {
     section: "Urgencias",
     items: [
-      { href: "/dashboard/urgencias/areas",         label: "Áreas",           icon: LayoutDashboard, roles: ["ADMINISTRADOR", "URGENCIAS", "MEDICO", "ENFERMERIA", "RECEPCION", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"] },
-      { href: "/dashboard/urgencias/inventario",    label: "Inventario",      icon: Activity,  roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"] },
-      { href: "/dashboard/urgencias/mapa",          label: "Mapa",            icon: MapIcon,   roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"] },
+      { href: "/dashboard/urgencias/areas",         label: "Áreas",           icon: LayoutDashboard, roles: ["ADMINISTRADOR", "URGENCIAS", "MEDICO", "ENFERMERIA", "RECEPCION", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"] },
+      { href: "/dashboard/urgencias/inventario",    label: "Inventario",      icon: Activity,  roles: ["ADMINISTRADOR", "URGENCIAS", "MEDICO", "ENFERMERIA", "RECEPCION", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"] },
+      { href: "/dashboard/urgencias/mapa",          label: "Mapa",            icon: MapIcon,   roles: ["ADMINISTRADOR", "URGENCIAS", "MEDICO", "ENFERMERIA", "RECEPCION", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"] },
       { href: "/dashboard/urgencias/mantenimiento", label: "Mantenimiento",   icon: Wrench,    roles: ["ADMINISTRADOR", "URGENCIAS"] },
       { href: "/dashboard/urgencias/kpis",          label: "Indicadores KPI", icon: BarChart2, roles: ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA"] },
     ],

@@ -6,8 +6,7 @@ import { NextResponse } from "next/server";
 const ROUTE_PERMISSIONS: [string, string[]][] = [
   ["/dashboard/admin",               ["ADMINISTRADOR"]],
   ["/dashboard/empleados",           ["ADMINISTRADOR"]],
-  ["/dashboard/urgencias/areas",     ["ADMINISTRADOR", "URGENCIAS", "MEDICO", "ENFERMERIA", "RECEPCION", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"]],
-  ["/dashboard/urgencias",           ["ADMINISTRADOR", "URGENCIAS", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA"]],
+  ["/dashboard/urgencias",           ["ADMINISTRADOR", "URGENCIAS", "MEDICO", "ENFERMERIA", "RECEPCION", "JEFE_BIOMEDICA", "INGENIERIA_BIOMEDICA", "MANTENIMIENTO"]],
   ["/dashboard/pacientes",           ["ADMINISTRADOR", "MEDICO", "ENFERMERIA", "RECEPCION", "URGENCIAS"]],
   ["/dashboard/citas",               ["ADMINISTRADOR", "ENFERMERIA"]],
   ["/dashboard/biomedica",           ["ADMINISTRADOR", "JEFE_BIOMEDICA", "MANTENIMIENTO", "INGENIERIA_BIOMEDICA"]],
